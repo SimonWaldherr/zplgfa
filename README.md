@@ -1,6 +1,8 @@
 # ZPLGFA Golang Package
 
 [![GoDoc](https://godoc.org/github.com/SimonWaldherr/zplgfa?status.svg)](https://godoc.org/github.com/SimonWaldherr/zplgfa) 
+[![Build Status](https://travis-ci.org/SimonWaldherr/zplgfa.svg?branch=master)](https://travis-ci.org/SimonWaldherr/zplgfa) 
+[![Coverage Status](https://coveralls.io/repos/github/SimonWaldherr/zplgfa/badge.svg?branch=master)](https://coveralls.io/github/SimonWaldherr/zplgfa?branch=master) 
 [![Go Report Card](https://goreportcard.com/badge/github.com/SimonWaldherr/zplgfa)](https://goreportcard.com/report/github.com/SimonWaldherr/zplgfa) 
 [![codebeat badge](https://codebeat.co/badges/28d795af-6f9b-453a-94c2-4fafb8b5b0d5)](https://codebeat.co/projects/github-com-simonwaldherr-zplgfa-master) 
 [![BCH compliance](https://bettercodehub.com/edge/badge/SimonWaldherr/zplgfa?branch=master)](https://bettercodehub.com/results/SimonWaldherr/zplgfa) 
