@@ -1,34 +1,29 @@
 package zplgfa
 
 import (
+	"encoding/json"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"io/ioutil"
 	"log"
 	"os"
-	"testing"
 	"strings"
+	"testing"
 )
 
 type zplTest struct {
-	file string
-	zpl string
+	Filename    string `json:"filename"`
+	Zplstring   string `json:"zplstring"`
+	Graphictype string `json:"graphictype"`
 }
 
 var zplTests []zplTest
 
 func init() {
-	zplTests = []zplTest{
-		{
-			file: "./test.png",
-			zpl: "^XA,^FS^FO0,0^GFA,32,51,3,,::01C000::,001C00::,1DDC00::,::^FS,^XZ",
-		},
-		{
-			file: "./test2.png",
-			zpl: "^XA,^FS^FO0,0^GFA,389,630,63,,038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038038000::1C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C71C7100::E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00E00:lJF00^FS,^XZ",
-		},
-	}
+	jsonstr, _ := ioutil.ReadFile("./tests/tests.json")
+	json.Unmarshal(jsonstr, &zplTests)
 }
 
 func Test_CompressASCII(t *testing.T) {
@@ -37,47 +32,55 @@ func Test_CompressASCII(t *testing.T) {
 	}
 }
 
-
-
 func Test_ConvertToZPL(t *testing.T) {
+	var graphicType GraphicType
 	for i, testcase := range zplTests {
-		
-		filename, zplstring := testcase.file, testcase.zpl
+		filename, zplstring, graphictype := testcase.Filename, testcase.Zplstring, testcase.Graphictype
 		// open file
 		file, err := os.Open(filename)
 		if err != nil {
-			log.Printf("Warning: could not open the file: %s\n", err)
+			log.Printf("Warning: could not open the file \"%s\": %s\n", filename, err)
 			return
 		}
-		
+
 		defer file.Close()
-		
+
 		// load image head information
 		config, format, err := image.DecodeConfig(file)
 		if err != nil {
 			log.Printf("Warning: image not compatible, format: %s, config: %v, error: %s\n", format, config, err)
 		}
-		
+
 		// reset file pointer to the beginning of the file
 		file.Seek(0, 0)
-		
+
 		// load and decode image
 		img, _, err := image.Decode(file)
 		if err != nil {
 			log.Printf("Warning: could not decode the file, %s\n", err)
 			return
 		}
-		
+
 		// flatten image
 		flat := FlattenImage(img)
-		
+
 		// convert image to zpl compatible type
-		gfimg := ConvertToZPL(flat, CompressedASCII)
-		
+		switch graphictype {
+		case "ASCII":
+			graphicType = ASCII
+		case "Binary":
+			graphicType = Binary
+		case "CompressedASCII":
+			graphicType = CompressedASCII
+		default:
+			graphicType = CompressedASCII
+		}
+		gfimg := ConvertToZPL(flat, graphicType)
+
 		// remove whitespace - only for the test
 		gfimg = strings.Replace(gfimg, " ", "", -1)
 		gfimg = strings.Replace(gfimg, "\n", "", -1)
-		
+
 		if gfimg != zplstring {
 			t.Fatalf("Testcase %d ConvertToZPL failed", i)
 		}
