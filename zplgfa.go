@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// GraphicType is a type to select the graphic format
 type GraphicType int
 
 const (
@@ -18,11 +19,12 @@ const (
 )
 
 // ConvertToZPL is just a wrapper for ConvertToGraphicField which also includes the ZPL
-// starting code ^XA and ending code ^XZ, as wall as a Field Separator and Field Origin.
+// starting code ^XA and ending code ^XZ, as well as a Field Separator and Field Origin.
 func ConvertToZPL(img image.Image, graphicType GraphicType) string {
 	return fmt.Sprintf("^XA,^FS\n^FO0,0\n%s^FS,^XZ\n", ConvertToGraphicField(img, graphicType))
 }
 
+// FlattenImage optimizes an image for the converting process
 func FlattenImage(source image.Image) *image.NRGBA {
 	size := source.Bounds().Size()
 	background := color.White
@@ -40,7 +42,7 @@ func FlattenImage(source image.Image) *image.NRGBA {
 func flatten(input color.Color, background color.Color) color.Color {
 	source := color.NRGBA64Model.Convert(input).(color.NRGBA64)
 	r, g, b, a := source.RGBA()
-	bg_r, bg_g, bg_b, _ := background.RGBA()
+	bgR, bgG, bgB, _ := background.RGBA()
 	alpha := float32(a) / 0xffff
 	conv := func(c uint32, bg uint32) uint8 {
 		val := 0xffff - uint32((float32(bg) * alpha))
@@ -48,9 +50,9 @@ func flatten(input color.Color, background color.Color) color.Color {
 		return uint8(val >> 8)
 	}
 	c := color.NRGBA{
-		conv(r, bg_r),
-		conv(g, bg_g),
-		conv(b, bg_b),
+		conv(r, bgR),
+		conv(g, bgG),
+		conv(b, bgB),
 		uint8(0xff),
 	}
 	return c
@@ -84,10 +86,10 @@ func getRepeatCode(repeatCount int, char string) string {
 
 func compressASCII(in string) string {
 	in = strings.ToUpper(in)
-	var curChar string = ""
-	var lastChar string = ""
-	var lastCharSince int = 0
-	var output string = ""
+	var curChar string
+	var lastChar string
+	var lastCharSince int
+	var output string
 	var repCode string
 
 	for i := 0; i < len(in)+1; i++ {

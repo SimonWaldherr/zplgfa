@@ -1,7 +1,6 @@
 package main
 
 import (
-	"simonwaldherr.de/go/zplgfa"
 	"flag"
 	"fmt"
 	"github.com/anthonynsimon/bild/blur"
@@ -16,6 +15,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"simonwaldherr.de/go/zplgfa"
 	"strings"
 )
 
@@ -103,14 +103,14 @@ func main() {
 	fmt.Println(gfimg)
 }
 
-type ImageSet interface {
+type imageSet interface {
 	Set(x, y int, c color.Color)
 }
 
 func editImageInvert(img image.Image) image.Image {
 	b := img.Bounds()
 
-	imgSet := img.(ImageSet)
+	imgSet := img.(imageSet)
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
 			oldPixel := img.At(x, y)
@@ -128,7 +128,7 @@ func editImageInvert(img image.Image) image.Image {
 func editImageMonochrome(img image.Image) image.Image {
 	b := img.Bounds()
 
-	imgSet := img.(ImageSet)
+	imgSet := img.(imageSet)
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
 			oldPixel := img.At(x, y)
