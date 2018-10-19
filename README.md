@@ -2,6 +2,8 @@
 
 [![GoDoc](https://godoc.org/github.com/SimonWaldherr/zplgfa?status.svg)](https://godoc.org/github.com/SimonWaldherr/zplgfa)
 [![Go Report Card](https://goreportcard.com/badge/github.com/SimonWaldherr/zplgfa)](https://goreportcard.com/report/github.com/SimonWaldherr/zplgfa)
+[![codebeat badge](https://codebeat.co/badges/28d795af-6f9b-453a-94c2-4fafb8b5b0d5)](https://codebeat.co/projects/github-com-simonwaldherr-zplgfa-master)
+[![BCH compliance](https://bettercodehub.com/edge/badge/SimonWaldherr/zplgfa?branch=master)](https://bettercodehub.com/results/SimonWaldherr/zplgfa)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/SimonWaldherr/zplgfa/master/LICENSE)
 
 The ZPLGFA Golang package implements some functions to convert PNG, JPEG and GIF files to ZPL compatible ^GF-elements ([Graphic Fields](https://www.zebra.com/us/en/support-downloads/knowledge-articles/gf-graphic-field-zpl-command.html)).

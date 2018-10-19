@@ -13,11 +13,11 @@ import (
 type GraphicType int
 
 const (
-	// using only hex characters (0-9A-F)
+	// ASCII graphic type using only hex characters (0-9A-F)
 	ASCII GraphicType = iota
-	// saving the same data as binary
+	// Binary saving the same data as binary
 	Binary
-	// compress the hex data via RLE
+	// CompressedASCII compresses the hex data via RLE
 	CompressedASCII
 )
 
