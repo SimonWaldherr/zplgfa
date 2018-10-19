@@ -7,20 +7,20 @@ So if you need to print labels on a [ZPL](https://en.wikipedia.org/wiki/Zebra_(p
 ## install
 
 1. [install Golang](https://golang.org/doc/install)
-1. `go install simonwaldherr.de/go/zplgfa/cmd/zplgfa`
+1. `go get simonwaldherr.de/go/zplgfa/cmd/zplgfa`
 
 ## usage
 
 So if your image file is `label.png` and the IP of your printer is `192.168.178.42` you can print via this command:
 
 ```sh
-./zplgfa -file label.png | nc 192.168.178.42 9100
+zplgfa -file label.png | nc 192.168.178.42 9100
 ```
 
 You can also use some effects, e.g. blur:
 
 ```sh
-./zplgfa -file label.png -edit blur | nc 192.168.178.42 9100
+zplgfa -file label.png -edit blur | nc 192.168.178.42 9100
 ```
 
 The ZPLGFA is actually just a demo application for the ZPLGFA package,
