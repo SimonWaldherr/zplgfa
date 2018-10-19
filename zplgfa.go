@@ -13,8 +13,11 @@ import (
 type GraphicType int
 
 const (
+	// using only hex characters (0-9A-F)
 	ASCII GraphicType = iota
+	// saving the same data as binary
 	Binary
+	// compress the hex data via RLE
 	CompressedASCII
 )
 
@@ -133,7 +136,7 @@ func compressASCII(in string) string {
 // ConvertToGraphicField converts an image.Image picture to a ZPL compatible Graphic Field.
 // The ZPL ^GF (Graphic Field) supports various data formats, this package supports the
 // normal ASCII encoded, as well as a RLE compressed ASCII format. It also supports the
-// Binary Graphic Field format. The encoding can be choosen by the second argument.
+// Binary Graphic Field format. The encoding can be chosen by the second argument.
 func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 	var gfType string
 	var lastLine string
