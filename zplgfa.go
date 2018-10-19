@@ -87,7 +87,8 @@ func getRepeatCode(repeatCount int, char string) string {
 	return repeatStr
 }
 
-func compressASCII(in string) string {
+// CompressASCII compresses the ASCII data of a ZPL Graphic Field using RLE
+func CompressASCII(in string) string {
 	in = strings.ToUpper(in)
 	var curChar string
 	var lastChar string
@@ -112,7 +113,7 @@ func compressASCII(in string) string {
 			curChar = string(in[i])
 		}
 		if lastChar != curChar {
-			if i-lastCharSince > 8 {
+			if i-lastCharSince > 4 {
 				repCode = getRepeatCode(i-lastCharSince, lastChar)
 				output += repCode
 			} else {
@@ -175,7 +176,7 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 		case ASCII:
 			GraphicFieldData += fmt.Sprintln(hexstr)
 		case CompressedASCII:
-			curLine := compressASCII(hexstr)
+			curLine := CompressASCII(hexstr)
 			if lastLine == curLine {
 				GraphicFieldData += ":"
 			} else {
@@ -186,7 +187,7 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 			GraphicFieldData += fmt.Sprintf("%s", line)
 		default:
 			graphicType = CompressedASCII
-			GraphicFieldData += fmt.Sprintln(compressASCII(hexstr))
+			GraphicFieldData += fmt.Sprintln(CompressASCII(hexstr))
 		}
 	}
 
