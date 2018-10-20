@@ -1,6 +1,7 @@
 package zplgfa
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"image"
 	_ "image/gif"
@@ -81,7 +82,13 @@ func Test_ConvertToZPL(t *testing.T) {
 		gfimg = strings.Replace(gfimg, " ", "", -1)
 		gfimg = strings.Replace(gfimg, "\n", "", -1)
 
+		switch graphictype {
+		case "Binary":
+			gfimg = base64.StdEncoding.EncodeToString([]byte(gfimg))
+		}
+
 		if gfimg != zplstring {
+			log.Printf("ConvertToZPL Test for file \"%s\" failed, wanted: \n%s\ngot: \n%s\n", filename, zplstring, gfimg)
 			t.Fatalf("Testcase %d ConvertToZPL failed", i)
 		}
 	}

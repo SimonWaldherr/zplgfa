@@ -185,9 +185,6 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 			lastLine = curLine
 		case Binary:
 			GraphicFieldData += fmt.Sprintf("%s", line)
-		default:
-			graphicType = CompressedASCII
-			GraphicFieldData += fmt.Sprintln(CompressASCII(hexstr))
 		}
 	}
 

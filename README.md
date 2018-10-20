@@ -11,6 +11,8 @@
 
 The ZPLGFA Golang package implements some functions to convert PNG, JPEG and GIF files to ZPL compatible ^GF-elements ([Graphic Fields](https://www.zebra.com/us/en/support-downloads/knowledge-articles/gf-graphic-field-zpl-command.html)).
 
+If you need a ready to use application and don't want to hassle around with source code, take a look at the [ZPLGFA CLI Tool](https://github.com/SimonWaldherr/zplgfa/tree/master/cmd/zplgfa) which is based on this package.
+
 ## install
 
 1. [install Golang](https://golang.org/doc/install)
