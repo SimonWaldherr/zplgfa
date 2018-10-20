@@ -89,7 +89,6 @@ func getRepeatCode(repeatCount int, char string) string {
 
 // CompressASCII compresses the ASCII data of a ZPL Graphic Field using RLE
 func CompressASCII(in string) string {
-	in = strings.ToUpper(in)
 	var curChar string
 	var lastChar string
 	var lastCharSince int
@@ -171,7 +170,9 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 				index = 0
 			}
 		}
-		hexstr := hex.EncodeToString(line)
+		
+		hexstr := strings.ToUpper(hex.EncodeToString(line))
+		
 		switch graphicType {
 		case ASCII:
 			GraphicFieldData += fmt.Sprintln(hexstr)
