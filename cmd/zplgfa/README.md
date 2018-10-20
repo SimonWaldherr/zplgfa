@@ -1,7 +1,7 @@
 # ZPLGFA CLI Tool
 
 The ZPLGFA cli tool converts PNG, JPEG and GIF images to [ZPL](https://www.zebra.com/content/dam/zebra/manuals/printers/common/programming/zpl-zbi2-pm-en.pdf) strings.
-So if you need to print labels on a [ZPL](https://en.wikipedia.org/wiki/Zebra_(programming_language) compatible printer
+So if you need to print labels on a [ZPL](https://en.wikipedia.org/wiki/Zebra_(programming_language)) compatible printer
 (like the amazing [ZEBRA ZM400](https://amzn.to/2OD5S4n)), but don't have ZPL-templates, you can use this free tool.
 
 ## install
