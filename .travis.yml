@@ -1,0 +1,15 @@
+language: go
+go:
+- 1.11
+env:
+  global:
+  - PATH=$HOME/gopath/bin:$PATH
+  - secure: BXdNmYUBPDjK2Mh+fbfc/UGPF/jLE8NXzKD3BK6Qm+Na6b6xrKbDnSpheScxFeJJW4LL7ZG2aIyg/4eFTnWFF0DYhrRRol83WLba40HvbEO37sYutnSsPBVJ8DZ6G5DcwdIFg8cG8oLtx4GqEtcsbLi+YXSC6Tat3tt718SBtCQu0VIVSG3RIRIKfgtKkNmj4b5NOxDPaZ1M6UUIF/bqOrafh/v2B+VulWrqh3uSEI1jMurLLUaW4u9Qh83OgspAwZ5Lr+pQFd+YcJqTzCD63YLfk1rMb5WbbdIuBhO4BTSo21ou6t109w7504vTVANBAgnMQqQrWX0M3HRtpOt3ZUSlh4x4WUn9OHtZEzPrVsOOXGo2CfS+PmdMlhijuGycdMBah2Vz/9mCp93CSX2en+lKCpKOs3vb5w9WoGadW/KAWCflHpEQFQyM+F1LD9Jk+88yhA+dgwEIWbcf4cXQhyGTd/ZA2tyszgAo7UqWTOkbu+JQwoHabo3yN6z/PlXG27cNCfYyJ/j+q5Xfy5MP6XepWi4GM+JurP6ssRRmT2T4VNVXXOfmn94+HudElEDrjkSFSRj7tahX1kmERpgF4Jq8XDwWw9XLR902iZ66Yqz+0P3qPmQsOx9gnnYELhdhYRIRGVmCfkWXQgUlFijRqUAwNGhGHGd6OESQUzRQZ0g=
+install:
+- go get github.com/mattn/goveralls
+- go get github.com/modocache/gover
+- go get -u -t simonwaldherr.de/go/zplgfa/...
+- go get -u -t github.com/simonwaldherr/zplgfa/...
+script:
+- go test -coverprofile=.coverprofile github.com/simonwaldherr/zplgfa/...
+- goveralls -coverprofile=.coverprofile -service=travis-ci -repotoken $COVERALLS_TOKEN
