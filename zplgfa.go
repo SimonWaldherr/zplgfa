@@ -170,9 +170,9 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 				index = 0
 			}
 		}
-		
+
 		hexstr := strings.ToUpper(hex.EncodeToString(line))
-		
+
 		switch graphicType {
 		case ASCII:
 			GraphicFieldData += fmt.Sprintln(hexstr)
