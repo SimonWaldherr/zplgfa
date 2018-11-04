@@ -3,10 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/anthonynsimon/bild/blur"
-	"github.com/anthonynsimon/bild/effect"
-	"github.com/anthonynsimon/bild/segment"
-	"github.com/nfnt/resize"
 	"image"
 	"image/color"
 	_ "image/gif"
@@ -15,8 +11,14 @@ import (
 	"log"
 	"math"
 	"os"
-	"simonwaldherr.de/go/zplgfa"
 	"strings"
+
+	"github.com/anthonynsimon/bild/blur"
+	"github.com/anthonynsimon/bild/effect"
+	"github.com/anthonynsimon/bild/segment"
+	"github.com/nfnt/resize"
+
+	"simonwaldherr.de/go/zplgfa"
 )
 
 func main() {
@@ -72,19 +74,16 @@ func main() {
 	}
 
 	// apply image manipulation functions
-	if strings.Contains(imageEditFlag, "monochrome") {
+	switch {
+	case strings.Contains(imageEditFlag, "monochrome"):
 		img = editImageMonochrome(img)
-	}
-	if strings.Contains(imageEditFlag, "blur") {
+	case strings.Contains(imageEditFlag, "blur"):
 		img = blur.Gaussian(img, float64(config.Width)/300)
-	}
-	if strings.Contains(imageEditFlag, "edge") {
+	case strings.Contains(imageEditFlag, "edge"):
 		img = effect.Sobel(img)
-	}
-	if strings.Contains(imageEditFlag, "segment") {
+	case strings.Contains(imageEditFlag, "segment"):
 		img = segment.Threshold(img, 128)
-	}
-	if strings.Contains(imageEditFlag, "invert") {
+	case strings.Contains(imageEditFlag, "invert"):
 		img = editImageInvert(img)
 	}
 
