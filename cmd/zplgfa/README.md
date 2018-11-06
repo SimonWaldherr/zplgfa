@@ -29,6 +29,19 @@ You can also use some effects, e.g. blur:
 zplgfa -file label.png -edit blur | nc 192.168.178.42 9100
 ```
 
+or send special commands:
+
+```sh
+zplgfa -cmd feed -ip 192.168.178.42 -port 9100
+```
+
+you can also send multiple commands at once:
+
+
+```sh
+zplgfa -cmd cancel,calib,feed -ip 192.168.178.42 -port 9100
+```
+
 The ZPLGFA is actually just a demo application for the ZPLGFA package,
 if you need something for productive work, look at the source and build something, depending on your needs
 

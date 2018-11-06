@@ -20,6 +20,8 @@ If you need a ready to use application and don't want to hassle around with sour
 
 ## example
 
+take a look at the [example application](https://github.com/SimonWaldherr/zplgfa/tree/master/cmd/zplgfa).
+
 ```go
 package main
 

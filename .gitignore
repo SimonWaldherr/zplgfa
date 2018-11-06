@@ -4,3 +4,4 @@ cmd/zplgfa/zplgfa
 zplgfa.coverprofile
 coverage.html
 test.zpl.bin*
+zplgfa.exe

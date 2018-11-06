@@ -19,29 +19,13 @@ import (
 	"simonwaldherr.de/go/zplgfa"
 )
 
-func main() {
-	var filenameFlag string
-	var zebraCmdFlag string
-	var graphicTypeFlag string
-	var imageEditFlag string
-	var networkIpFlag string
-	var networkPortFlag string
-	var imageResizeFlag float64
-	var graphicType zplgfa.GraphicType
+func specialCmds(zebraCmdFlag, networkIpFlag, networkPortFlag string) bool {
 	var cmdSent bool
-
-	flag.StringVar(&filenameFlag, "file", "", "filename to convert to zpl")
-	flag.StringVar(&zebraCmdFlag, "cmd", "", "send special command to printer [calib,feed]")
-	flag.StringVar(&graphicTypeFlag, "type", "CompressedASCII", "type of graphic field encoding")
-	flag.StringVar(&imageEditFlag, "edit", "", "manipulate the image [invert,monochrome]")
-	flag.StringVar(&networkIpFlag, "ip", "", "send zpl to printer")
-	flag.StringVar(&networkPortFlag, "port", "9100", "network port of printer")
-	flag.Float64Var(&imageResizeFlag, "resize", 1.0, "zoom/resize the image")
-
-	// load flag input arguments
-	flag.Parse()
-
-	// send special commands to printer
+	if strings.Contains(zebraCmdFlag, "cancel") && networkIpFlag != "" {
+		if err := sendCancelCmdToZebra(networkIpFlag, networkPortFlag); err == nil {
+			cmdSent = true
+		}
+	}
 	if strings.Contains(zebraCmdFlag, "calib") && networkIpFlag != "" {
 		if err := sendCalibCmdToZebra(networkIpFlag, networkPortFlag); err == nil {
 			cmdSent = true
@@ -52,6 +36,53 @@ func main() {
 			cmdSent = true
 		}
 	}
+	if strings.Contains(zebraCmdFlag, "info") && networkIpFlag != "" {
+		info, err := getInfoFromZebra(networkIpFlag, networkPortFlag)
+		if err == nil {
+			fmt.Println(info)
+			cmdSent = true
+		}
+	}
+	if strings.Contains(zebraCmdFlag, "config") && networkIpFlag != "" {
+		info, err := getConfigFromZebra(networkIpFlag, networkPortFlag)
+		if err == nil {
+			fmt.Println(info)
+			cmdSent = true
+		}
+	}
+	if strings.Contains(zebraCmdFlag, "diag") && networkIpFlag != "" {
+		info, err := getDiagFromZebra(networkIpFlag, networkPortFlag)
+		if err == nil {
+			fmt.Println(info)
+			cmdSent = true
+		}
+	}
+	return cmdSent
+}
+
+func main() {
+	var filenameFlag string
+	var zebraCmdFlag string
+	var graphicTypeFlag string
+	var imageEditFlag string
+	var networkIpFlag string
+	var networkPortFlag string
+	var imageResizeFlag float64
+	var graphicType zplgfa.GraphicType
+
+	flag.StringVar(&filenameFlag, "file", "", "filename to convert to zpl")
+	flag.StringVar(&zebraCmdFlag, "cmd", "", "send special command to printer [cancel,calib,feed,info,config,diag]")
+	flag.StringVar(&graphicTypeFlag, "type", "CompressedASCII", "type of graphic field encoding")
+	flag.StringVar(&imageEditFlag, "edit", "", "manipulate the image [invert,monochrome]")
+	flag.StringVar(&networkIpFlag, "ip", "", "send zpl to printer")
+	flag.StringVar(&networkPortFlag, "port", "9100", "network port of printer")
+	flag.Float64Var(&imageResizeFlag, "resize", 1.0, "zoom/resize the image")
+
+	// load flag input arguments
+	flag.Parse()
+
+	// send special commands to printer
+	cmdSent := specialCmds(zebraCmdFlag, networkIpFlag, networkPortFlag)
 
 	// check input parameter
 	if filenameFlag == "" {
