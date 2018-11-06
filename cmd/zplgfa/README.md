@@ -17,6 +17,12 @@ So if your image file is `label.png` and the IP of your printer is `192.168.178.
 zplgfa -file label.png | nc 192.168.178.42 9100
 ```
 
+or via the integrated network capability:
+
+```sh
+zplgfa -file label.png -ip 192.168.178.42
+```
+
 You can also use some effects, e.g. blur:
 
 ```sh

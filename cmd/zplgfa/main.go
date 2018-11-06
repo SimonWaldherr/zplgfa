@@ -4,12 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"image"
-	"image/color"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
 	"log"
-	"math"
 	"os"
 	"strings"
 
@@ -23,18 +21,46 @@ import (
 
 func main() {
 	var filenameFlag string
+	var zebraCmdFlag string
 	var graphicTypeFlag string
 	var imageEditFlag string
+	var networkIpFlag string
+	var networkPortFlag string
 	var imageResizeFlag float64
 	var graphicType zplgfa.GraphicType
+	var cmdSent bool
 
 	flag.StringVar(&filenameFlag, "file", "", "filename to convert to zpl")
+	flag.StringVar(&zebraCmdFlag, "cmd", "", "send special command to printer [calib,feed]")
 	flag.StringVar(&graphicTypeFlag, "type", "CompressedASCII", "type of graphic field encoding")
 	flag.StringVar(&imageEditFlag, "edit", "", "manipulate the image [invert,monochrome]")
+	flag.StringVar(&networkIpFlag, "ip", "", "send zpl to printer")
+	flag.StringVar(&networkPortFlag, "port", "9100", "network port of printer")
 	flag.Float64Var(&imageResizeFlag, "resize", 1.0, "zoom/resize the image")
 
 	// load flag input arguments
 	flag.Parse()
+
+	// send special commands to printer
+	if strings.Contains(zebraCmdFlag, "calib") && networkIpFlag != "" {
+		if err := sendCalibCmdToZebra(networkIpFlag, networkPortFlag); err == nil {
+			cmdSent = true
+		}
+	}
+	if strings.Contains(zebraCmdFlag, "feed") && networkIpFlag != "" {
+		if err := sendFeedCmdToZebra(networkIpFlag, networkPortFlag); err == nil {
+			cmdSent = true
+		}
+	}
+
+	// check input parameter
+	if filenameFlag == "" {
+		if cmdSent {
+			return
+		}
+		log.Printf("Warning: no input file specified\n")
+		return
+	}
 
 	// open file
 	file, err := os.Open(filenameFlag)
@@ -43,6 +69,7 @@ func main() {
 		return
 	}
 
+	// close file when complete
 	defer file.Close()
 
 	// load image head information
@@ -62,28 +89,31 @@ func main() {
 	}
 
 	// select graphic field type
-	switch graphicTypeFlag {
+	switch strings.ToUpper(graphicTypeFlag) {
 	case "ASCII":
 		graphicType = zplgfa.ASCII
-	case "Binary":
+	case "BINARY":
 		graphicType = zplgfa.Binary
-	case "CompressedASCII":
+	case "COMPRESSEDASCII":
 		graphicType = zplgfa.CompressedASCII
 	default:
 		graphicType = zplgfa.CompressedASCII
 	}
 
 	// apply image manipulation functions
-	switch {
-	case strings.Contains(imageEditFlag, "monochrome"):
+	if strings.Contains(imageEditFlag, "monochrome") {
 		img = editImageMonochrome(img)
-	case strings.Contains(imageEditFlag, "blur"):
+	}
+	if strings.Contains(imageEditFlag, "blur") {
 		img = blur.Gaussian(img, float64(config.Width)/300)
-	case strings.Contains(imageEditFlag, "edge"):
+	}
+	if strings.Contains(imageEditFlag, "edge") {
 		img = effect.Sobel(img)
-	case strings.Contains(imageEditFlag, "segment"):
+	}
+	if strings.Contains(imageEditFlag, "segment") {
 		img = segment.Threshold(img, 128)
-	case strings.Contains(imageEditFlag, "invert"):
+	}
+	if strings.Contains(imageEditFlag, "invert") {
 		img = editImageInvert(img)
 	}
 
@@ -98,48 +128,11 @@ func main() {
 	// convert image to zpl compatible type
 	gfimg := zplgfa.ConvertToZPL(flat, graphicType)
 
-	// output zpl with graphic field date to stdout
-	fmt.Println(gfimg)
-}
-
-type imageSet interface {
-	Set(x, y int, c color.Color)
-}
-
-func editImageInvert(img image.Image) image.Image {
-	b := img.Bounds()
-
-	imgSet := img.(imageSet)
-	for y := b.Min.Y; y < b.Max.Y; y++ {
-		for x := b.Min.X; x < b.Max.X; x++ {
-			oldPixel := img.At(x, y)
-			r, g, b, a := oldPixel.RGBA()
-			r = 65535 - r
-			g = 65535 - g
-			b = 65535 - b
-			pixel := color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)}
-			imgSet.Set(x, y, pixel)
-		}
+	if networkIpFlag != "" {
+		// send zpl to printer
+		sendDataToZebra(networkIpFlag, networkPortFlag, gfimg)
+	} else {
+		// output zpl with graphic field data to stdout
+		fmt.Println(gfimg)
 	}
-	return img
-}
-
-func editImageMonochrome(img image.Image) image.Image {
-	b := img.Bounds()
-
-	imgSet := img.(imageSet)
-	for y := b.Min.Y; y < b.Max.Y; y++ {
-		for x := b.Min.X; x < b.Max.X; x++ {
-			oldPixel := img.At(x, y)
-			r, g, b, a := oldPixel.RGBA()
-			if r > math.MaxUint16/2 || g > math.MaxUint16/2 || b > math.MaxUint16/2 {
-				r, g, b = 65535, 65535, 65535
-			} else {
-				r, g, b = 0, 0, 0
-			}
-			pixel := color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)}
-			imgSet.Set(x, y, pixel)
-		}
-	}
-	return img
 }

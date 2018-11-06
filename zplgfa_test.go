@@ -76,15 +76,15 @@ func Test_ConvertToZPL(t *testing.T) {
 		default:
 			graphicType = CompressedASCII
 		}
+
 		gfimg := ConvertToZPL(flat, graphicType)
 
-		// remove whitespace - only for the test
-		gfimg = strings.Replace(gfimg, " ", "", -1)
-		gfimg = strings.Replace(gfimg, "\n", "", -1)
-
-		switch graphictype {
-		case "Binary":
+		if graphictype == "Binary" {
 			gfimg = base64.StdEncoding.EncodeToString([]byte(gfimg))
+		} else {
+			// remove whitespace - only for the test
+			gfimg = strings.Replace(gfimg, " ", "", -1)
+			gfimg = strings.Replace(gfimg, "\n", "", -1)
 		}
 
 		if gfimg != zplstring {
