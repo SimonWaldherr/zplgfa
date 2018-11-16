@@ -9,7 +9,7 @@
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FSimonWaldherr%2Fzplgfa.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FSimonWaldherr%2Fzplgfa?ref=badge_shield) 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/SimonWaldherr/zplgfa/master/LICENSE) 
 
-The ZPLGFA Golang package implements some functions to convert PNG, JPEG and GIF files to ZPL compatible ^GF-elements ([Graphic Fields](https://www.zebra.com/us/en/support-downloads/knowledge-articles/gf-graphic-field-zpl-command.html)).
+The ZPLGFA **Golang** package implements some functions to convert PNG, JPEG and GIF encoded graphic files to ZPL compatible ^GF-elements ([Graphic Fields](https://www.zebra.com/us/en/support-downloads/knowledge-articles/gf-graphic-field-zpl-command.html)).
 
 If you need a ready to use application and don't want to hassle around with source code, take a look at the [ZPLGFA CLI Tool](https://github.com/SimonWaldherr/zplgfa/tree/master/cmd/zplgfa) which is based on this package.
 
@@ -20,7 +20,8 @@ If you need a ready to use application and don't want to hassle around with sour
 
 ## example
 
-take a look at the [example application](https://github.com/SimonWaldherr/zplgfa/tree/master/cmd/zplgfa).
+take a look at the [example application](https://github.com/SimonWaldherr/zplgfa/tree/master/cmd/zplgfa)  
+or at this sample code:  
 
 ```go
 package main
@@ -68,7 +69,7 @@ func main() {
     // convert image to zpl compatible type
     gfimg := zplgfa.ConvertToZPL(flat, zplgfa.CompressedASCII)
 
-    // output zpl with graphic field date to stdout
+    // output zpl with graphic field data to stdout
     fmt.Println(gfimg)
 }
 
