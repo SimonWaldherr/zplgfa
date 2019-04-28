@@ -21,36 +21,39 @@ import (
 
 func specialCmds(zebraCmdFlag, networkIpFlag, networkPortFlag string) bool {
 	var cmdSent bool
-	if strings.Contains(zebraCmdFlag, "cancel") && networkIpFlag != "" {
+	if networkIpFlag == "" {
+		return cmdSent
+	}
+	if strings.Contains(zebraCmdFlag, "cancel") {
 		if err := sendCancelCmdToZebra(networkIpFlag, networkPortFlag); err == nil {
 			cmdSent = true
 		}
 	}
-	if strings.Contains(zebraCmdFlag, "calib") && networkIpFlag != "" {
+	if strings.Contains(zebraCmdFlag, "calib") {
 		if err := sendCalibCmdToZebra(networkIpFlag, networkPortFlag); err == nil {
 			cmdSent = true
 		}
 	}
-	if strings.Contains(zebraCmdFlag, "feed") && networkIpFlag != "" {
+	if strings.Contains(zebraCmdFlag, "feed") {
 		if err := sendFeedCmdToZebra(networkIpFlag, networkPortFlag); err == nil {
 			cmdSent = true
 		}
 	}
-	if strings.Contains(zebraCmdFlag, "info") && networkIpFlag != "" {
+	if strings.Contains(zebraCmdFlag, "info") {
 		info, err := getInfoFromZebra(networkIpFlag, networkPortFlag)
 		if err == nil {
 			fmt.Println(info)
 			cmdSent = true
 		}
 	}
-	if strings.Contains(zebraCmdFlag, "config") && networkIpFlag != "" {
+	if strings.Contains(zebraCmdFlag, "config") {
 		info, err := getConfigFromZebra(networkIpFlag, networkPortFlag)
 		if err == nil {
 			fmt.Println(info)
 			cmdSent = true
 		}
 	}
-	if strings.Contains(zebraCmdFlag, "diag") && networkIpFlag != "" {
+	if strings.Contains(zebraCmdFlag, "diag") {
 		info, err := getDiagFromZebra(networkIpFlag, networkPortFlag)
 		if err == nil {
 			fmt.Println(info)

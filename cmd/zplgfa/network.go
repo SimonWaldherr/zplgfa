@@ -9,6 +9,9 @@ import (
 
 func sendDataToZebra(ip, port, str string) error {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", ip+":"+port)
+	if err != nil {
+		return err
+	}
 	conn, err := net.DialTCP("tcp4", nil, tcpAddr)
 	if err == nil {
 		defer conn.Close()
@@ -34,6 +37,9 @@ func sendCancelCmdToZebra(ip, port string) error {
 
 func getInfoFromZebra(ip, port string) (string, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", ip+":"+port)
+	if err != nil {
+		return "", err
+	}
 	conn, err := net.DialTCP("tcp4", nil, tcpAddr)
 	if err == nil {
 		defer conn.Close()
@@ -70,6 +76,9 @@ func getTerminalOutputFromZebra(ip, port, cmd string) (string, error) {
 	var config string
 	var lastInput time.Time
 	tcpAddr, err := net.ResolveTCPAddr("tcp", ip+":"+port)
+	if err != nil {
+		return "", err
+	}
 	conn, err := net.DialTCP("tcp4", nil, tcpAddr)
 	if err == nil {
 		defer conn.Close()
