@@ -1,5 +1,7 @@
 # ZPLGFA Golang Package
 
+*convert pictures to ZPL compatible ^GF-elements*
+
 [![GoDoc](https://godoc.org/github.com/SimonWaldherr/zplgfa?status.svg)](https://godoc.org/github.com/SimonWaldherr/zplgfa) 
 [![Build Status](https://travis-ci.org/SimonWaldherr/zplgfa.svg?branch=master)](https://travis-ci.org/SimonWaldherr/zplgfa) 
 [![Coverage Status](https://coveralls.io/repos/github/SimonWaldherr/zplgfa/badge.svg?branch=master)](https://coveralls.io/github/SimonWaldherr/zplgfa?branch=master) 
@@ -74,3 +76,17 @@ func main() {
 }
 
 ```
+
+## label server
+
+If you have dozens of label printers in use and need to fill and print label templates, this tool will help you:  
+
+[![SimonWaldherr/ups - GitHub](https://gh-card.dev/repos/SimonWaldherr/ups.svg?fullname)](https://github.com/SimonWaldherr/ups)
+
+## Is it any good?
+
+[Yes](https://news.ycombinator.com/item?id=3067434)
+
+## License
+
+[MIT](https://github.com/SimonWaldherr/zplgfa/blob/master/LICENSE)
