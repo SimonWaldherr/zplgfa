@@ -1,3 +1,7 @@
+*since I am currently working exclusively in the home office and no longer have to do with labels professionally (only as a hobby), I can unfortunately no longer work on this project.*
+*But if someone would like to provide me a [@Zebra](https://github.com/Zebra) printer, I would be happy to develop it further.*
+*Of course, pull requests are still welcome.*
+
 # ZPLGFA Golang Package
 
 *convert pictures to ZPL compatible ^GF-elements*
