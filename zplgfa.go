@@ -24,6 +24,12 @@ const (
 // ConvertToZPL is just a wrapper for ConvertToGraphicField which also includes the ZPL
 // starting code ^XA and ending code ^XZ, as well as a Field Separator and Field Origin.
 func ConvertToZPL(img image.Image, graphicType GraphicType) string {
+	//Check before entering the ConvertToGraphicField function
+	//if the width is 0, the function can exit early
+	check := img.Bounds().Size().X / 8
+	if check == 0 {
+		return ""
+	}
 	return fmt.Sprintf("^XA,^FS\n^FO0,0\n%s^FS,^XZ\n", ConvertToGraphicField(img, graphicType))
 }
 
