@@ -19,154 +19,146 @@ import (
 	"simonwaldherr.de/go/zplgfa"
 )
 
-func specialCmds(zebraCmdFlag, networkIpFlag, networkPortFlag string) bool {
-	var cmdSent bool
-	if networkIpFlag == "" {
-		return cmdSent
+func handleZebraCommands(cmd, ip, port string) bool {
+	if ip == "" {
+		return false
 	}
-	if strings.Contains(zebraCmdFlag, "cancel") {
-		if err := sendCancelCmdToZebra(networkIpFlag, networkPortFlag); err == nil {
-			cmdSent = true
+
+	// Define a map of command strings to functions that return error only
+	cmdActionsErr := map[string]func(string, string) error{
+		"cancel": sendCancelCmdToZebra,
+		"calib":  sendCalibCmdToZebra,
+		"feed":   sendFeedCmdToZebra,
+	}
+
+	// Define a map of command strings to functions that return (string, error)
+	cmdActionsStr := map[string]func(string, string) (string, error){
+		"info":   getInfoFromZebra,
+		"config": getConfigFromZebra,
+		"diag":   getDiagFromZebra,
+	}
+
+	for key, action := range cmdActionsErr {
+		if strings.Contains(cmd, key) {
+			if err := action(ip, port); err == nil {
+				return true
+			}
 		}
 	}
-	if strings.Contains(zebraCmdFlag, "calib") {
-		if err := sendCalibCmdToZebra(networkIpFlag, networkPortFlag); err == nil {
-			cmdSent = true
+
+	for key, action := range cmdActionsStr {
+		if strings.Contains(cmd, key) {
+			result, err := action(ip, port)
+			if err == nil {
+				fmt.Println(result)
+				return true
+			}
 		}
 	}
-	if strings.Contains(zebraCmdFlag, "feed") {
-		if err := sendFeedCmdToZebra(networkIpFlag, networkPortFlag); err == nil {
-			cmdSent = true
-		}
+
+	return false
+}
+
+func parseFlags() (string, string, string, string, string, string, float64) {
+	var filename, zebraCmd, graphicType, imageEdit, ip, port string
+	var resizeFactor float64
+
+	flag.StringVar(&filename, "file", "", "filename to convert to zpl")
+	flag.StringVar(&zebraCmd, "cmd", "", "send special command to printer [cancel,calib,feed,info,config,diag]")
+	flag.StringVar(&graphicType, "type", "CompressedASCII", "type of graphic field encoding")
+	flag.StringVar(&imageEdit, "edit", "", "manipulate the image [invert,monochrome]")
+	flag.StringVar(&ip, "ip", "", "send zpl to printer")
+	flag.StringVar(&port, "port", "9100", "network port of printer")
+	flag.Float64Var(&resizeFactor, "resize", 1.0, "zoom/resize the image")
+
+	flag.Parse()
+	return filename, zebraCmd, graphicType, imageEdit, ip, port, resizeFactor
+}
+
+func openImageFile(filename string) (image.Image, image.Config, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, image.Config{}, fmt.Errorf("could not open the file \"%s\": %s", filename, err)
 	}
-	if strings.Contains(zebraCmdFlag, "info") {
-		info, err := getInfoFromZebra(networkIpFlag, networkPortFlag)
-		if err == nil {
-			fmt.Println(info)
-			cmdSent = true
-		}
+	defer file.Close()
+
+	config, format, err := image.DecodeConfig(file)
+	if err != nil {
+		return nil, config, fmt.Errorf("image not compatible, format: %s, config: %v, error: %s", format, config, err)
 	}
-	if strings.Contains(zebraCmdFlag, "config") {
-		info, err := getConfigFromZebra(networkIpFlag, networkPortFlag)
-		if err == nil {
-			fmt.Println(info)
-			cmdSent = true
-		}
+
+	file.Seek(0, 0)
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return nil, config, fmt.Errorf("could not decode the file, %s", err)
 	}
-	if strings.Contains(zebraCmdFlag, "diag") {
-		info, err := getDiagFromZebra(networkIpFlag, networkPortFlag)
-		if err == nil {
-			fmt.Println(info)
-			cmdSent = true
-		}
+
+	return img, config, nil
+}
+
+func processImage(img image.Image, editFlag string, resizeFactor float64, config image.Config) image.Image {
+	if strings.Contains(editFlag, "monochrome") {
+		img = editImageMonochrome(img)
 	}
-	return cmdSent
+	if strings.Contains(editFlag, "blur") {
+		img = blur.Gaussian(img, float64(config.Width)/300)
+	}
+	if strings.Contains(editFlag, "edge") {
+		img = effect.Sobel(img)
+	}
+	if strings.Contains(editFlag, "segment") {
+		img = segment.Threshold(img, 128)
+	}
+	if strings.Contains(editFlag, "invert") {
+		img = editImageInvert(img)
+	}
+
+	if resizeFactor != 1.0 {
+		img = resize.Resize(uint(float64(config.Width)*resizeFactor), uint(float64(config.Height)*resizeFactor), img, resize.MitchellNetravali)
+	}
+
+	return img
+}
+
+func getGraphicType(typeFlag string) zplgfa.GraphicType {
+	switch strings.ToUpper(typeFlag) {
+	case "ASCII":
+		return zplgfa.ASCII
+	case "BINARY":
+		return zplgfa.Binary
+	case "COMPRESSEDASCII":
+		return zplgfa.CompressedASCII
+	default:
+		return zplgfa.CompressedASCII
+	}
 }
 
 func main() {
-	var filenameFlag string
-	var zebraCmdFlag string
-	var graphicTypeFlag string
-	var imageEditFlag string
-	var networkIpFlag string
-	var networkPortFlag string
-	var imageResizeFlag float64
-	var graphicType zplgfa.GraphicType
+	filename, zebraCmd, graphicTypeFlag, imageEdit, ip, port, resizeFactor := parseFlags()
 
-	flag.StringVar(&filenameFlag, "file", "", "filename to convert to zpl")
-	flag.StringVar(&zebraCmdFlag, "cmd", "", "send special command to printer [cancel,calib,feed,info,config,diag]")
-	flag.StringVar(&graphicTypeFlag, "type", "CompressedASCII", "type of graphic field encoding")
-	flag.StringVar(&imageEditFlag, "edit", "", "manipulate the image [invert,monochrome]")
-	flag.StringVar(&networkIpFlag, "ip", "", "send zpl to printer")
-	flag.StringVar(&networkPortFlag, "port", "9100", "network port of printer")
-	flag.Float64Var(&imageResizeFlag, "resize", 1.0, "zoom/resize the image")
+	if handleZebraCommands(zebraCmd, ip, port) && filename == "" {
+		return
+	}
 
-	// load flag input arguments
-	flag.Parse()
-
-	// send special commands to printer
-	cmdSent := specialCmds(zebraCmdFlag, networkIpFlag, networkPortFlag)
-
-	// check input parameter
-	if filenameFlag == "" {
-		if cmdSent {
-			return
-		}
+	if filename == "" {
 		log.Printf("Warning: no input file specified\n")
 		return
 	}
 
-	// open file
-	file, err := os.Open(filenameFlag)
+	img, config, err := openImageFile(filename)
 	if err != nil {
-		log.Printf("Warning: could not open the file \"%s\": %s\n", filenameFlag, err)
+		log.Printf("Warning: %s\n", err)
 		return
 	}
 
-	// close file when complete
-	defer file.Close()
+	img = processImage(img, imageEdit, resizeFactor, config)
 
-	// load image head information
-	config, format, err := image.DecodeConfig(file)
-	if err != nil {
-		log.Printf("Warning: image not compatible, format: %s, config: %v, error: %s\n", format, config, err)
-	}
-
-	// reset file pointer to the beginning of the file
-	file.Seek(0, 0)
-
-	// load and decode image
-	img, _, err := image.Decode(file)
-	if err != nil {
-		log.Printf("Warning: could not decode the file, %s\n", err)
-		return
-	}
-
-	// select graphic field type
-	switch strings.ToUpper(graphicTypeFlag) {
-	case "ASCII":
-		graphicType = zplgfa.ASCII
-	case "BINARY":
-		graphicType = zplgfa.Binary
-	case "COMPRESSEDASCII":
-		graphicType = zplgfa.CompressedASCII
-	default:
-		graphicType = zplgfa.CompressedASCII
-	}
-
-	// apply image manipulation functions
-	if strings.Contains(imageEditFlag, "monochrome") {
-		img = editImageMonochrome(img)
-	}
-	if strings.Contains(imageEditFlag, "blur") {
-		img = blur.Gaussian(img, float64(config.Width)/300)
-	}
-	if strings.Contains(imageEditFlag, "edge") {
-		img = effect.Sobel(img)
-	}
-	if strings.Contains(imageEditFlag, "segment") {
-		img = segment.Threshold(img, 128)
-	}
-	if strings.Contains(imageEditFlag, "invert") {
-		img = editImageInvert(img)
-	}
-
-	// resize image
-	if imageResizeFlag != 1.0 {
-		img = resize.Resize(uint(float64(config.Width)*imageResizeFlag), uint(float64(config.Height)*imageResizeFlag), img, resize.MitchellNetravali)
-	}
-
-	// flatten image
 	flat := zplgfa.FlattenImage(img)
+	gfimg := zplgfa.ConvertToZPL(flat, getGraphicType(graphicTypeFlag))
 
-	// convert image to zpl compatible type
-	gfimg := zplgfa.ConvertToZPL(flat, graphicType)
-
-	if networkIpFlag != "" {
-		// send zpl to printer
-		sendDataToZebra(networkIpFlag, networkPortFlag, gfimg)
+	if ip != "" {
+		sendDataToZebra(ip, port, gfimg)
 	} else {
-		// output zpl with graphic field data to stdout
 		fmt.Println(gfimg)
 	}
 }

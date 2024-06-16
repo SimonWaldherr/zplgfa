@@ -23,73 +23,80 @@ type zplTest struct {
 var zplTests []zplTest
 
 func init() {
-	jsonstr, _ := ioutil.ReadFile("./tests/tests.json")
-	json.Unmarshal(jsonstr, &zplTests)
+	jsonstr, err := ioutil.ReadFile("./tests/tests.json")
+	if err != nil {
+		log.Fatalf("Failed to read test cases: %s", err)
+	}
+	if err := json.Unmarshal(jsonstr, &zplTests); err != nil {
+		log.Fatalf("Failed to unmarshal test cases: %s", err)
+	}
 }
 
 func Test_CompressASCII(t *testing.T) {
 	if str := CompressASCII("FFFFFFFF000000"); str != "NFL0" {
-		t.Fatalf("CompressASCII failed")
+		t.Fatalf("CompressASCII failed: got %s, want NFL0", str)
 	}
 }
 
 func Test_ConvertToZPL(t *testing.T) {
-	var graphicType GraphicType
 	for i, testcase := range zplTests {
-		filename, zplstring, graphictype := testcase.Filename, testcase.Zplstring, testcase.Graphictype
-		// open file
-		file, err := os.Open(filename)
-		if err != nil {
-			log.Printf("Warning: could not open the file \"%s\": %s\n", filename, err)
-			return
-		}
-
-		defer file.Close()
-
-		// load image head information
-		config, format, err := image.DecodeConfig(file)
-		if err != nil {
-			log.Printf("Warning: image not compatible, format: %s, config: %v, error: %s\n", format, config, err)
-		}
-
-		// reset file pointer to the beginning of the file
-		file.Seek(0, 0)
-
-		// load and decode image
-		img, _, err := image.Decode(file)
-		if err != nil {
-			log.Printf("Warning: could not decode the file, %s\n", err)
-			return
-		}
-
-		// flatten image
-		flat := FlattenImage(img)
-
-		// convert image to zpl compatible type
-		switch graphictype {
-		case "ASCII":
-			graphicType = ASCII
-		case "Binary":
-			graphicType = Binary
-		case "CompressedASCII":
-			graphicType = CompressedASCII
-		default:
-			graphicType = CompressedASCII
-		}
-
-		gfimg := ConvertToZPL(flat, graphicType)
-
-		if graphictype == "Binary" {
-			gfimg = base64.StdEncoding.EncodeToString([]byte(gfimg))
-		} else {
-			// remove whitespace - only for the test
-			gfimg = strings.Replace(gfimg, " ", "", -1)
-			gfimg = strings.Replace(gfimg, "\n", "", -1)
-		}
-
-		if gfimg != zplstring {
-			log.Printf("ConvertToZPL Test for file \"%s\" failed, wanted: \n%s\ngot: \n%s\n", filename, zplstring, gfimg)
-			t.Fatalf("Testcase %d ConvertToZPL failed", i)
-		}
+		t.Run(testcase.Filename, func(t *testing.T) {
+			testConvertToZPL(t, testcase, i)
+		})
 	}
+}
+
+func testConvertToZPL(t *testing.T, testcase zplTest, index int) {
+	file, err := os.Open(testcase.Filename)
+	if err != nil {
+		t.Fatalf("Failed to open file %s: %s", testcase.Filename, err)
+	}
+	defer file.Close()
+
+	_, _, err = image.DecodeConfig(file)
+	if err != nil {
+		t.Fatalf("Failed to decode config for file %s: %s", testcase.Filename, err)
+	}
+
+	if _, err := file.Seek(0, 0); err != nil {
+		t.Fatalf("Failed to reset file pointer for %s: %s", testcase.Filename, err)
+	}
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		t.Fatalf("Failed to decode image for file %s: %s", testcase.Filename, err)
+	}
+
+	flat := FlattenImage(img)
+	graphicType := parseGraphicType(testcase.Graphictype)
+	gfimg := ConvertToZPL(flat, graphicType)
+
+	if graphicType == Binary {
+		gfimg = base64.StdEncoding.EncodeToString([]byte(gfimg))
+	} else {
+		gfimg = cleanZPLString(gfimg)
+	}
+
+	if gfimg != testcase.Zplstring {
+		t.Fatalf("Testcase %d ConvertToZPL failed for file %s: \nExpected: \n%s\nGot: \n%s\n", index, testcase.Filename, testcase.Zplstring, gfimg)
+	}
+}
+
+func parseGraphicType(graphicTypeStr string) GraphicType {
+	switch graphicTypeStr {
+	case "ASCII":
+		return ASCII
+	case "Binary":
+		return Binary
+	case "CompressedASCII":
+		return CompressedASCII
+	default:
+		return CompressedASCII
+	}
+}
+
+func cleanZPLString(zpl string) string {
+	zpl = strings.ReplaceAll(zpl, " ", "")
+	zpl = strings.ReplaceAll(zpl, "\n", "")
+	return zpl
 }
