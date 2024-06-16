@@ -24,26 +24,38 @@ func handleZebraCommands(cmd, ip, port string) bool {
 		return false
 	}
 
-	cmdActions := map[string]func(string, string) (string, error){
+	// Define a map of command strings to functions that return error only
+	cmdActionsErr := map[string]func(string, string) error{
 		"cancel": sendCancelCmdToZebra,
 		"calib":  sendCalibCmdToZebra,
 		"feed":   sendFeedCmdToZebra,
+	}
+
+	// Define a map of command strings to functions that return (string, error)
+	cmdActionsStr := map[string]func(string, string) (string, error){
 		"info":   getInfoFromZebra,
 		"config": getConfigFromZebra,
 		"diag":   getDiagFromZebra,
 	}
 
-	for key, action := range cmdActions {
+	for key, action := range cmdActionsErr {
 		if strings.Contains(cmd, key) {
-			result, err := action(ip, port)
-			if err == nil {
-				if result != "" {
-					fmt.Println(result)
-				}
+			if err := action(ip, port); err == nil {
 				return true
 			}
 		}
 	}
+
+	for key, action := range cmdActionsStr {
+		if strings.Contains(cmd, key) {
+			result, err := action(ip, port)
+			if err == nil {
+				fmt.Println(result)
+				return true
+			}
+		}
+	}
+
 	return false
 }
 
