@@ -21,7 +21,7 @@ const (
 	CompressedASCII
 )
 
-// ConvertToZPL is a wrapper for ConvertToGraphicField, adding ZPL start and end codes.
+// ConvertToZPL wraps ConvertToGraphicField, adding ZPL start and end codes.
 func ConvertToZPL(img image.Image, graphicType GraphicType) string {
 	if img.Bounds().Size().X/8 == 0 {
 		return ""
@@ -32,8 +32,9 @@ func ConvertToZPL(img image.Image, graphicType GraphicType) string {
 // FlattenImage optimizes an image for the converting process.
 func FlattenImage(source image.Image) *image.NRGBA {
 	size := source.Bounds().Size()
-	background := color.White
 	target := image.NewNRGBA(source.Bounds())
+	background := color.White
+
 	for y := 0; y < size.Y; y++ {
 		for x := 0; x < size.X; x++ {
 			p := source.At(x, y)
@@ -43,38 +44,41 @@ func FlattenImage(source image.Image) *image.NRGBA {
 	return target
 }
 
+// flatten blends a pixel with the background color based on its alpha value.
 func flatten(input, background color.Color) color.Color {
-	source := color.NRGBA64Model.Convert(input).(color.NRGBA64)
-	r, g, b, a := source.RGBA()
+	src := color.NRGBA64Model.Convert(input).(color.NRGBA64)
+	r, g, b, a := src.RGBA()
 	bgR, bgG, bgB, _ := background.RGBA()
 	alpha := float32(a) / 0xffff
 
-	conv := func(c, bg uint32) uint8 {
+	blend := func(c, bg uint32) uint8 {
 		val := 0xffff - uint32(float32(bg)*alpha)
 		val |= uint32(float32(c) * alpha)
 		return uint8(val >> 8)
 	}
 
 	return color.NRGBA{
-		R: conv(r, bgR),
-		G: conv(g, bgG),
-		B: conv(b, bgB),
+		R: blend(r, bgR),
+		G: blend(g, bgG),
+		B: blend(b, bgB),
 		A: 0xff,
 	}
 }
 
+// getRepeatCode generates ZPL repeat codes for character compression.
 func getRepeatCode(repeatCount int, char string) string {
+	const maxRepeat = 419
+	highString := " ghijklmnopqrstuvwxyz"
+	lowString := " GHIJKLMNOPQRSTUVWXY"
+
 	repeatStr := ""
-	if repeatCount > 419 {
-		repeatStr += getRepeatCode(repeatCount-419, char)
-		repeatCount = 419
+	for repeatCount > maxRepeat {
+		repeatStr += getRepeatCode(maxRepeat, char)
+		repeatCount -= maxRepeat
 	}
 
 	high := repeatCount / 20
 	low := repeatCount % 20
-
-	lowString := " GHIJKLMNOPQRSTUVWXY"
-	highString := " ghijklmnopqrstuvwxyz"
 
 	if high > 0 {
 		repeatStr += string(highString[high])
@@ -88,10 +92,15 @@ func getRepeatCode(repeatCount int, char string) string {
 
 // CompressASCII compresses the ASCII data of a ZPL Graphic Field using RLE.
 func CompressASCII(input string) string {
-	var output, lastChar, repCode string
-	lastCharSince := 0
+	if input == "" {
+		return ""
+	}
 
-	for i := 0; i < len(input)+1; i++ {
+	var output strings.Builder
+	var lastChar string
+	var lastCharSince int
+
+	for i := 0; i <= len(input); i++ {
 		curChar := ""
 		if i < len(input) {
 			curChar = string(input[i])
@@ -99,10 +108,9 @@ func CompressASCII(input string) string {
 
 		if lastChar != curChar {
 			if i-lastCharSince > 4 {
-				repCode = getRepeatCode(i-lastCharSince, lastChar)
-				output += repCode
+				output.WriteString(getRepeatCode(i-lastCharSince, lastChar))
 			} else {
-				output += strings.Repeat(lastChar, i-lastCharSince)
+				output.WriteString(strings.Repeat(lastChar, i-lastCharSince))
 			}
 			lastChar = curChar
 			lastCharSince = i
@@ -118,21 +126,18 @@ func CompressASCII(input string) string {
 		}
 	}
 
-	if output == "" {
-		output += getRepeatCode(len(input), lastChar)
-	}
-
-	return output
+	return output.String()
 }
 
 // ConvertToGraphicField converts an image.Image to a ZPL compatible Graphic Field.
 func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
-	var gfType, lastLine, graphicFieldData string
+	var gfType, graphicFieldData string
 	size := source.Bounds().Size()
 	width := (size.X + 7) / 8 // round up division
 	height := size.Y
+	var lastLine string
 
-	for y := 0; y < size.Y; y++ {
+	for y := 0; y < height; y++ {
 		line := make([]uint8, width)
 		for x := 0; x < size.X; x++ {
 			if x%8 == 0 {
