@@ -6,6 +6,7 @@
 
 *convert pictures to ZPL compatible ^GF-elements*
 
+[![DOI](https://zenodo.org/badge/153820885.svg)](https://doi.org/10.5281/zenodo.15291211) 
 [![GoDoc](https://godoc.org/github.com/SimonWaldherr/zplgfa?status.svg)](https://godoc.org/github.com/SimonWaldherr/zplgfa) 
 [![Coverage Status](https://coveralls.io/repos/github/SimonWaldherr/zplgfa/badge.svg?branch=master)](https://coveralls.io/github/SimonWaldherr/zplgfa?branch=master) 
 [![Go Report Card](https://goreportcard.com/badge/github.com/SimonWaldherr/zplgfa)](https://goreportcard.com/report/github.com/SimonWaldherr/zplgfa) 
