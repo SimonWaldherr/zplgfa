@@ -71,23 +71,40 @@ func getRepeatCode(repeatCount int, char string) string {
 	highString := " ghijklmnopqrstuvwxyz"
 	lowString := " GHIJKLMNOPQRSTUVWXY"
 
-	repeatStr := ""
-	for repeatCount > maxRepeat {
-		repeatStr += getRepeatCode(maxRepeat, char)
-		repeatCount -= maxRepeat
+	encode := func(count int) string {
+		var singleRepeatStr strings.Builder
+		high := count / 20
+		low := count % 20
+
+		if high > 0 {
+			singleRepeatStr.WriteByte(highString[high])
+		}
+		if low > 0 {
+			singleRepeatStr.WriteByte(lowString[low])
+		}
+
+		singleRepeatStr.WriteString(char)
+		return singleRepeatStr.String()
 	}
 
-	high := repeatCount / 20
-	low := repeatCount % 20
+	if repeatCount > maxRepeat {
+		var repeatStr strings.Builder
+		remainder := repeatCount % maxRepeat
+		quotient := repeatCount / maxRepeat
 
-	if high > 0 {
-		repeatStr += string(highString[high])
-	}
-	if low > 0 {
-		repeatStr += string(lowString[low])
+		if remainder > 0 {
+			repeatStr.WriteString(encode(remainder))
+		}
+
+		maxEncoding := encode(maxRepeat)
+		for i := 0; i < quotient; i++ {
+			repeatStr.WriteString(maxEncoding)
+		}
+
+		return repeatStr.String()
 	}
 
-	return repeatStr + char
+	return encode(repeatCount)
 }
 
 // CompressASCII compresses the ASCII data of a ZPL Graphic Field using RLE.
