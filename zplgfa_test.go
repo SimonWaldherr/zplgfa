@@ -95,10 +95,10 @@ func Test_ConvertToGraphicFieldZ64(t *testing.T) {
 	assertZ64GraphicField(t, pattern, 2, []byte{0xaa, 0x80, 0x00, 0x00})
 }
 
-func assertZ64GraphicField(t *testing.T, img image.Image, bytesPerRow int, expectedUncompressedData []byte) {
+func assertZ64GraphicField(t *testing.T, img image.Image, expectedBytesPerRow int, expectedUncompressedData []byte) {
 	t.Helper()
 	got := ConvertToGraphicField(img, Z64)
-	prefix := fmt.Sprintf("^GFA,%d,%d,%d,\n:Z64:", len(expectedUncompressedData), len(expectedUncompressedData), bytesPerRow)
+	prefix := fmt.Sprintf("^GFA,%d,%d,%d,\n:Z64:", len(expectedUncompressedData), len(expectedUncompressedData), expectedBytesPerRow)
 	if !strings.HasPrefix(got, prefix) {
 		t.Fatalf("ConvertToGraphicField Z64 prefix failed:\nExpected prefix:\n%s\nGot:\n%s", prefix, got)
 	}

@@ -5,6 +5,7 @@ import (
 	"compress/zlib"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -206,7 +207,9 @@ func EncodeZ64(input []byte) (string, error) {
 	var compressed bytes.Buffer
 	writer := zlib.NewWriter(&compressed)
 	if _, err := writer.Write(input); err != nil {
-		writer.Close()
+		if closeErr := writer.Close(); closeErr != nil {
+			return "", errors.Join(err, closeErr)
+		}
 		return "", err
 	}
 	if err := writer.Close(); err != nil {
@@ -233,7 +236,17 @@ func crc16CCITT(data []byte) uint16 {
 }
 
 // ConvertToGraphicField converts an image.Image to a ZPL compatible Graphic Field.
+// It returns an empty string if Z64 encoding fails; use ConvertToGraphicFieldWithError to inspect the error.
 func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
+	graphicField, err := ConvertToGraphicFieldWithError(source, graphicType)
+	if err != nil {
+		return ""
+	}
+	return graphicField
+}
+
+// ConvertToGraphicFieldWithError converts an image.Image to a ZPL compatible Graphic Field and returns encoding errors.
+func ConvertToGraphicFieldWithError(source image.Image, graphicType GraphicType) (string, error) {
 	var gfType, graphicFieldData string
 	size := source.Bounds().Size()
 	width := (size.X + 7) / 8 // round up division
@@ -288,10 +301,10 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 		totalBytes = len(rawGraphicData)
 		encoded, err := EncodeZ64(rawGraphicData)
 		if err != nil {
-			return ""
+			return "", err
 		}
 		graphicFieldData = encoded
 	}
 
-	return fmt.Sprintf("^GF%s,%d,%d,%d,\n%s", gfType, totalBytes, width*height, width, graphicFieldData)
+	return fmt.Sprintf("^GF%s,%d,%d,%d,\n%s", gfType, totalBytes, width*height, width, graphicFieldData), nil
 }
