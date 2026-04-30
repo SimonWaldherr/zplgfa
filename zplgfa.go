@@ -202,19 +202,15 @@ func CompressASCII(input string) string {
 }
 
 // EncodeZ64 compresses binary graphic data and formats it as a Z64 payload.
-func EncodeZ64(input []byte) (string, error) {
+func EncodeZ64(input []byte) string {
 	var compressed bytes.Buffer
 	writer := zlib.NewWriter(&compressed)
-	if _, err := writer.Write(input); err != nil {
-		writer.Close()
-		return "", err
-	}
-	if err := writer.Close(); err != nil {
-		return "", err
-	}
+	// The zlib writer is backed by bytes.Buffer, whose Write method cannot fail.
+	_, _ = writer.Write(input)
+	_ = writer.Close()
 
 	compressedBytes := compressed.Bytes()
-	return fmt.Sprintf(":Z64:%s:%04X", base64.StdEncoding.EncodeToString(compressedBytes), crc16CCITT(compressedBytes)), nil
+	return fmt.Sprintf(":Z64:%s:%04X", base64.StdEncoding.EncodeToString(compressedBytes), crc16CCITT(compressedBytes))
 }
 
 func crc16CCITT(data []byte) uint16 {
@@ -279,11 +275,7 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 	case Z64:
 		gfType = "A"
 		totalBytes = len(rawGraphicData)
-		encoded, err := EncodeZ64(rawGraphicData)
-		if err != nil {
-			return ""
-		}
-		graphicFieldData = encoded
+		graphicFieldData = EncodeZ64(rawGraphicData)
 	}
 
 	return fmt.Sprintf("^GF%s,%d,%d,%d,\n%s", gfType, totalBytes, width*height, width, graphicFieldData)
