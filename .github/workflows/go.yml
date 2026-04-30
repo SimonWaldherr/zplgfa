@@ -24,5 +24,8 @@ jobs:
     - name: Build
       run: go build -v ./cmd/zplgfa
 
+    - name: Build WebAssembly
+      run: GOOS=js GOARCH=wasm go build -v -o /tmp/zplgfa.wasm ./cmd/wasm
+
     - name: Test
       run: go test -v ./...

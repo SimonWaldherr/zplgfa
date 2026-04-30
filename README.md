@@ -18,6 +18,8 @@ The ZPLGFA **Golang** package implements some functions to convert PNG, JPEG and
 
 If you need a ready to use application and don't want to hassle around with source code, take a look at the [ZPLGFA CLI Tool](https://github.com/SimonWaldherr/zplgfa/tree/master/cmd/zplgfa) which is based on this package.
 
+You can also try the package directly in your browser &mdash; the [WebAssembly build](https://github.com/SimonWaldherr/zplgfa/tree/master/cmd/wasm) powers a [live demo with a converter and a minimal graphical editor](https://simonwaldherr.github.io/zplgfa/) (sources in [`docs/`](https://github.com/SimonWaldherr/zplgfa/tree/master/docs)).
+
 ## features
 
 - convert `image.Image` values to complete ZPL labels with `ConvertToZPL`
