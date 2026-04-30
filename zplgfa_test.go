@@ -95,10 +95,10 @@ func Test_ConvertToGraphicFieldZ64(t *testing.T) {
 	assertZ64GraphicField(t, pattern, 2, []byte{0xaa, 0x80, 0x00, 0x00})
 }
 
-func assertZ64GraphicField(t *testing.T, img image.Image, bytesPerRow int, wantRaw []byte) {
+func assertZ64GraphicField(t *testing.T, img image.Image, bytesPerRow int, expectedUncompressedData []byte) {
 	t.Helper()
 	got := ConvertToGraphicField(img, Z64)
-	prefix := fmt.Sprintf("^GFA,%d,%d,%d,\n:Z64:", len(wantRaw), len(wantRaw), bytesPerRow)
+	prefix := fmt.Sprintf("^GFA,%d,%d,%d,\n:Z64:", len(expectedUncompressedData), len(expectedUncompressedData), bytesPerRow)
 	if !strings.HasPrefix(got, prefix) {
 		t.Fatalf("ConvertToGraphicField Z64 prefix failed:\nExpected prefix:\n%s\nGot:\n%s", prefix, got)
 	}
@@ -128,8 +128,8 @@ func assertZ64GraphicField(t *testing.T, img image.Image, bytesPerRow int, wantR
 		t.Fatalf("ConvertToGraphicField Z64 decompress failed: %s", err)
 	}
 
-	if !bytes.Equal(raw, wantRaw) {
-		t.Fatalf("ConvertToGraphicField Z64 raw data failed: got % X, want % X", raw, wantRaw)
+	if !bytes.Equal(raw, expectedUncompressedData) {
+		t.Fatalf("ConvertToGraphicField Z64 raw data failed: got % X, want % X", raw, expectedUncompressedData)
 	}
 }
 
