@@ -205,9 +205,12 @@ func CompressASCII(input string) string {
 func EncodeZ64(input []byte) string {
 	var compressed bytes.Buffer
 	writer := zlib.NewWriter(&compressed)
-	// The zlib writer is backed by bytes.Buffer, whose Write method cannot fail.
-	_, _ = writer.Write(input)
-	_ = writer.Close()
+	if _, err := writer.Write(input); err != nil {
+		panic(fmt.Sprintf("zplgfa: unexpected Z64 compression write error: %s", err))
+	}
+	if err := writer.Close(); err != nil {
+		panic(fmt.Sprintf("zplgfa: unexpected Z64 compression close error: %s", err))
+	}
 
 	compressedBytes := compressed.Bytes()
 	return fmt.Sprintf(":Z64:%s:%04X", base64.StdEncoding.EncodeToString(compressedBytes), crc16CCITT(compressedBytes))
