@@ -217,6 +217,7 @@
     const px = imgData.data;
     for (let i = 0; i < px.length; i += 4) {
       // Already opaque since the canvas background is solid white.
+      // Luma using ITU-R BT.601 coefficients, then threshold at 128.
       const y = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
       const v = y < 128 ? 0 : 255;
       px[i] = px[i + 1] = px[i + 2] = v;

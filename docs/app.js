@@ -154,7 +154,7 @@
       }
       if (invert) { r = 255 - r; g = 255 - g; b = 255 - b; }
       if (mono) {
-        // Luma-based threshold at 128.
+        // Luma-based threshold at 128 (ITU-R BT.601 coefficients).
         const y = 0.299 * r + 0.587 * g + 0.114 * b;
         const v = y < 128 ? 0 : 255;
         r = g = b = v;
