@@ -22,7 +22,7 @@ If you need a ready to use application and don't want to hassle around with sour
 
 - convert `image.Image` values to complete ZPL labels with `ConvertToZPL`
 - generate raw `^GF` graphic fields with `ConvertToGraphicField`
-- choose between `ASCII`, `Binary` and `CompressedASCII` graphic field encodings
+- choose between `ASCII`, `Binary`, `CompressedASCII` and `Z64` graphic field encodings
 - flatten images with alpha transparency against a white background with `FlattenImage`
 - compress ASCII graphic data with `CompressASCII`
 - position graphics on the label with `ConvertToZPLAt`
@@ -98,6 +98,12 @@ func main() {
 ```go
 flat := zplgfa.FlattenImage(img)
 zpl := zplgfa.ConvertToZPL(flat, zplgfa.CompressedASCII)
+```
+
+Use `zplgfa.Z64` when you want zlib-compressed, base64 encoded ZPL graphic data:
+
+```go
+zpl := zplgfa.ConvertToZPL(flat, zplgfa.Z64)
 ```
 
 ### Convert and position an image

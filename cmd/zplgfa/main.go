@@ -65,7 +65,7 @@ func parseFlags() (string, string, string, string, string, string, float64) {
 
 	flag.StringVar(&filename, "file", "", "filename to convert to zpl")
 	flag.StringVar(&zebraCmd, "cmd", "", "send special command to printer [cancel,calib,feed,info,config,diag]")
-	flag.StringVar(&graphicType, "type", "CompressedASCII", "type of graphic field encoding")
+	flag.StringVar(&graphicType, "type", "CompressedASCII", "type of graphic field encoding [ASCII,Binary,CompressedASCII,Z64]")
 	flag.StringVar(&imageEdit, "edit", "", "manipulate the image [invert,monochrome]")
 	flag.StringVar(&ip, "ip", "", "send zpl to printer")
 	flag.StringVar(&port, "port", "9100", "network port of printer")
@@ -128,6 +128,8 @@ func getGraphicType(typeFlag string) zplgfa.GraphicType {
 		return zplgfa.Binary
 	case "COMPRESSEDASCII":
 		return zplgfa.CompressedASCII
+	case "Z64":
+		return zplgfa.Z64
 	default:
 		return zplgfa.CompressedASCII
 	}
