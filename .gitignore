@@ -5,3 +5,5 @@ zplgfa.coverprofile
 coverage.html
 test.zpl.bin*
 zplgfa.exe
+docs/zplgfa.wasm
+docs/wasm_exec.js
