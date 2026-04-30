@@ -5,7 +5,12 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"io"
 	"math"
+	"os"
 	"strings"
 )
 
@@ -21,12 +26,57 @@ const (
 	CompressedASCII
 )
 
+// ConvertOptions configures ZPL output created by ConvertToZPLWithOptions.
+type ConvertOptions struct {
+	GraphicType GraphicType
+	X           int
+	Y           int
+	Reverse     bool
+}
+
 // ConvertToZPL wraps ConvertToGraphicField, adding ZPL start and end codes.
 func ConvertToZPL(img image.Image, graphicType GraphicType) string {
-	if img.Bounds().Size().X/8 == 0 {
+	return ConvertToZPLWithOptions(img, ConvertOptions{GraphicType: graphicType})
+}
+
+// ConvertToZPLAt wraps ConvertToGraphicField, adding ZPL start and end codes and field origin.
+func ConvertToZPLAt(img image.Image, graphicType GraphicType, x, y int) string {
+	return ConvertToZPLWithOptions(img, ConvertOptions{GraphicType: graphicType, X: x, Y: y})
+}
+
+// ConvertToZPLWithOptions wraps ConvertToGraphicField, adding ZPL start and end codes and optional field settings.
+func ConvertToZPLWithOptions(img image.Image, options ConvertOptions) string {
+	if img == nil || img.Bounds().Dx() == 0 || img.Bounds().Dy() == 0 {
 		return ""
 	}
-	return fmt.Sprintf("^XA,^FS\n^FO0,0\n%s^FS,^XZ\n", ConvertToGraphicField(img, graphicType))
+
+	reverseField := ""
+	if options.Reverse {
+		reverseField = "^FR\n"
+	}
+
+	return fmt.Sprintf("^XA,^FS\n^FO%d,%d\n%s%s^FS,^XZ\n", options.X, options.Y, reverseField, ConvertToGraphicField(img, options.GraphicType))
+}
+
+// ConvertReaderToZPL decodes PNG, JPEG or GIF image data from reader and converts it to ZPL.
+func ConvertReaderToZPL(reader io.Reader, graphicType GraphicType) (string, error) {
+	img, _, err := image.Decode(reader)
+	if err != nil {
+		return "", err
+	}
+
+	return ConvertToZPL(FlattenImage(img), graphicType), nil
+}
+
+// ConvertFileToZPL opens an image file, decodes it and converts it to ZPL.
+func ConvertFileToZPL(filename string, graphicType GraphicType) (string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	return ConvertReaderToZPL(file, graphicType)
 }
 
 // FlattenImage optimizes an image for the converting process.

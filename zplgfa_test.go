@@ -1,15 +1,16 @@
 package zplgfa
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
+	"image/color"
+	"image/png"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -35,6 +36,102 @@ func init() {
 func Test_CompressASCII(t *testing.T) {
 	if str := CompressASCII("FFFFFFFF000000"); str != "NFL0" {
 		t.Fatalf("CompressASCII failed: got %s, want NFL0", str)
+	}
+}
+
+func Test_ConvertToZPLAt(t *testing.T) {
+	img := image.NewGray(image.Rect(0, 0, 8, 1))
+
+	got := ConvertToZPLAt(img, ASCII, 12, 34)
+	want := "^XA,^FS\n^FO12,34\n^GFA,3,1,1,\nFF\n^FS,^XZ\n"
+
+	if got != want {
+		t.Fatalf("ConvertToZPLAt failed:\nExpected:\n%s\nGot:\n%s", want, got)
+	}
+}
+
+func Test_ConvertToZPLWithOptionsReverse(t *testing.T) {
+	img := image.NewGray(image.Rect(0, 0, 8, 1))
+
+	got := ConvertToZPLWithOptions(img, ConvertOptions{
+		GraphicType: ASCII,
+		X:           5,
+		Y:           6,
+		Reverse:     true,
+	})
+	want := "^XA,^FS\n^FO5,6\n^FR\n^GFA,3,1,1,\nFF\n^FS,^XZ\n"
+
+	if got != want {
+		t.Fatalf("ConvertToZPLWithOptions failed:\nExpected:\n%s\nGot:\n%s", want, got)
+	}
+}
+
+func Test_ConvertToZPLSmallImage(t *testing.T) {
+	img := image.NewGray(image.Rect(0, 0, 1, 1))
+
+	got := ConvertToZPL(img, ASCII)
+	want := "^XA,^FS\n^FO0,0\n^GFA,3,1,1,\n80\n^FS,^XZ\n"
+
+	if got != want {
+		t.Fatalf("ConvertToZPL for small image failed:\nExpected:\n%s\nGot:\n%s", want, got)
+	}
+}
+
+func Test_ConvertReaderToZPL(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 8, 1))
+	for x := 0; x < img.Bounds().Dx(); x++ {
+		img.Set(x, 0, color.NRGBA{A: 0xff})
+	}
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("Failed to encode PNG: %s", err)
+	}
+
+	got, err := ConvertReaderToZPL(&buf, ASCII)
+	if err != nil {
+		t.Fatalf("ConvertReaderToZPL failed: %s", err)
+	}
+
+	want := "^XA,^FS\n^FO0,0\n^GFA,3,1,1,\nFF\n^FS,^XZ\n"
+	if got != want {
+		t.Fatalf("ConvertReaderToZPL failed:\nExpected:\n%s\nGot:\n%s", want, got)
+	}
+}
+
+func Test_ConvertReaderToZPLError(t *testing.T) {
+	if _, err := ConvertReaderToZPL(strings.NewReader("not an image"), ASCII); err == nil {
+		t.Fatal("ConvertReaderToZPL should fail for invalid image data")
+	}
+}
+
+func Test_ConvertFileToZPL(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 8, 1))
+	for x := 0; x < img.Bounds().Dx(); x++ {
+		img.Set(x, 0, color.NRGBA{A: 0xff})
+	}
+
+	filename := filepath.Join(t.TempDir(), "label.png")
+	file, err := os.Create(filename)
+	if err != nil {
+		t.Fatalf("Failed to create temp image: %s", err)
+	}
+	if err := png.Encode(file, img); err != nil {
+		file.Close()
+		t.Fatalf("Failed to encode temp image: %s", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("Failed to close temp image: %s", err)
+	}
+
+	got, err := ConvertFileToZPL(filename, ASCII)
+	if err != nil {
+		t.Fatalf("ConvertFileToZPL failed: %s", err)
+	}
+
+	want := "^XA,^FS\n^FO0,0\n^GFA,3,1,1,\nFF\n^FS,^XZ\n"
+	if got != want {
+		t.Fatalf("ConvertFileToZPL failed:\nExpected:\n%s\nGot:\n%s", want, got)
 	}
 }
 
@@ -99,4 +196,49 @@ func cleanZPLString(zpl string) string {
 	zpl = strings.ReplaceAll(zpl, " ", "")
 	zpl = strings.ReplaceAll(zpl, "\n", "")
 	return zpl
+}
+
+func Benchmark_CompressASCII(b *testing.B) {
+	input := strings.Repeat("F", 512) + strings.Repeat("0", 512) + strings.Repeat("A5", 512)
+
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = CompressASCII(input)
+	}
+}
+
+func Benchmark_ConvertToZPLASCII(b *testing.B) {
+	benchmarkConvertToZPL(b, ASCII)
+}
+
+func Benchmark_ConvertToZPLCompressedASCII(b *testing.B) {
+	benchmarkConvertToZPL(b, CompressedASCII)
+}
+
+func Benchmark_ConvertToZPLBinary(b *testing.B) {
+	benchmarkConvertToZPL(b, Binary)
+}
+
+func benchmarkConvertToZPL(b *testing.B, graphicType GraphicType) {
+	img := benchmarkImage(256, 128)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = ConvertToZPL(img, graphicType)
+	}
+}
+
+func benchmarkImage(width, height int) image.Image {
+	img := image.NewGray(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if (x/8+y/8)%2 == 0 {
+				img.SetGray(x, y, color.Gray{Y: 0})
+			} else {
+				img.SetGray(x, y, color.Gray{Y: 0xff})
+			}
+		}
+	}
+	return img
 }
