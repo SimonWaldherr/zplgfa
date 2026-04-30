@@ -18,6 +18,17 @@ The ZPLGFA **Golang** package implements some functions to convert PNG, JPEG and
 
 If you need a ready to use application and don't want to hassle around with source code, take a look at the [ZPLGFA CLI Tool](https://github.com/SimonWaldherr/zplgfa/tree/master/cmd/zplgfa) which is based on this package.
 
+## features
+
+- convert `image.Image` values to complete ZPL labels with `ConvertToZPL`
+- generate raw `^GF` graphic fields with `ConvertToGraphicField`
+- choose between `ASCII`, `Binary` and `CompressedASCII` graphic field encodings
+- flatten images with alpha transparency against a white background with `FlattenImage`
+- compress ASCII graphic data with `CompressASCII`
+- position graphics on the label with `ConvertToZPLAt`
+- configure origin and reverse-field output with `ConvertToZPLWithOptions`
+- decode and convert PNG, JPEG and GIF data directly from readers or files with `ConvertReaderToZPL` and `ConvertFileToZPL`
+
 ## install
 
 1. [install Golang](https://golang.org/doc/install)
@@ -78,6 +89,61 @@ func main() {
     fmt.Println(gfimg)
 }
 
+```
+
+## package api
+
+### Convert an image
+
+```go
+flat := zplgfa.FlattenImage(img)
+zpl := zplgfa.ConvertToZPL(flat, zplgfa.CompressedASCII)
+```
+
+### Convert and position an image
+
+```go
+zpl := zplgfa.ConvertToZPLAt(flat, zplgfa.CompressedASCII, 120, 80)
+```
+
+### Convert with options
+
+```go
+zpl := zplgfa.ConvertToZPLWithOptions(flat, zplgfa.ConvertOptions{
+    GraphicType: zplgfa.CompressedASCII,
+    X:           120,
+    Y:           80,
+    Reverse:     true,
+})
+```
+
+### Convert from a reader or file
+
+`ConvertReaderToZPL` and `ConvertFileToZPL` decode PNG, JPEG and GIF input, flatten the image and return a complete ZPL label:
+
+```go
+zplFromReader, err := zplgfa.ConvertReaderToZPL(reader, zplgfa.CompressedASCII)
+zplFromFile, err := zplgfa.ConvertFileToZPL("label.png", zplgfa.CompressedASCII)
+```
+
+### Generate only a graphic field
+
+```go
+gf := zplgfa.ConvertToGraphicField(flat, zplgfa.ASCII)
+```
+
+## test and benchmark
+
+Run the full test suite:
+
+```sh
+go test ./...
+```
+
+Run benchmarks:
+
+```sh
+go test -bench=. ./...
 ```
 
 ## label server
