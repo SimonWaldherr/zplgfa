@@ -285,7 +285,7 @@
         headers: { "Accept": "image/png" },
         body: zplText,
       });
-      if (!resp.ok) throw new Error("Labelary HTTP " + resp.status);
+      if (!resp.ok) throw new Error("Labelary API request failed with HTTP " + resp.status);
       const blob = await resp.blob();
       const imgUrl = URL.createObjectURL(blob);
       resultEl.innerHTML = "";

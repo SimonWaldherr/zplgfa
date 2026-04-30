@@ -331,11 +331,13 @@
 
   // ---- ZPL Preview (Editor tab) ----------------------------------------
   // Auto-compute label dimensions (inches) from canvas size and selected DPI.
+  const MM_PER_INCH = 25.4;
+  const QUARTER_INCH_PRECISION = 4; // round to nearest 0.25 in
   function syncDimsFromCanvas() {
     const dpmm = parseInt(previewDpmm.value, 10) || 8;
-    const dotsPerInch = dpmm * 25.4;
-    previewLabelW.value = Math.max(0.5, Math.round((canvas.width / dotsPerInch) * 4) / 4).toFixed(2);
-    previewLabelH.value = Math.max(0.5, Math.round((canvas.height / dotsPerInch) * 4) / 4).toFixed(2);
+    const dotsPerInch = dpmm * MM_PER_INCH;
+    previewLabelW.value = Math.max(0.5, Math.round((canvas.width / dotsPerInch) * QUARTER_INCH_PRECISION) / QUARTER_INCH_PRECISION).toFixed(2);
+    previewLabelH.value = Math.max(0.5, Math.round((canvas.height / dotsPerInch) * QUARTER_INCH_PRECISION) / QUARTER_INCH_PRECISION).toFixed(2);
   }
 
   // Recompute on DPI change.
