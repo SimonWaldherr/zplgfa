@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZPLGFA &mdash; Image to ZPL converter (WASM)</title>
+<meta name="description" content="Convert images to ZPL ^GF graphic fields directly in your browser using the zplgfa Go package compiled to WebAssembly.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>ZPLGFA <span class="tag">WASM</span></h1>
+  <p>
+    Convert images to <a href="https://www.zebra.com/us/en/support-downloads/knowledge-articles/gf-graphic-field-zpl-command.html" target="_blank" rel="noopener">ZPL <code>^GF</code> graphic fields</a>
+    entirely in your browser. The
+    <a href="https://github.com/SimonWaldherr/zplgfa" target="_blank" rel="noopener">zplgfa</a>
+    Go package is compiled to WebAssembly &mdash; nothing is uploaded.
+  </p>
+  <nav>
+    <button type="button" class="tab active" data-tab="convert">Converter</button>
+    <button type="button" class="tab" data-tab="editor">Mini editor</button>
+  </nav>
+</header>
+
+<main>
+  <section id="status" aria-live="polite" class="status loading">
+    Loading WebAssembly module&hellip;
+  </section>
+
+  <!-- ===== CONVERTER TAB ===== -->
+  <section id="tab-convert" class="tab-panel active">
+    <div class="grid">
+      <div class="panel">
+        <h2>1. Pick an image</h2>
+        <div id="dropzone" class="dropzone">
+          <p>Drop an image here, or</p>
+          <label class="btn">
+            <input type="file" id="fileInput" accept="image/png,image/jpeg,image/gif">
+            Choose file&hellip;
+          </label>
+          <p class="hint">PNG, JPEG or GIF</p>
+        </div>
+
+        <h2>2. Options</h2>
+        <div class="row">
+          <label for="graphicType">Graphic type</label>
+          <select id="graphicType">
+            <option value="CompressedASCII" selected>CompressedASCII</option>
+            <option value="ASCII">ASCII</option>
+            <option value="Binary">Binary</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="resize">Resize factor</label>
+          <input type="number" id="resize" min="0.05" max="4" step="0.05" value="1">
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="monochrome"> Monochrome (threshold)</label>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="invert"> Invert</label>
+        </div>
+        <div class="row">
+          <button type="button" id="convertBtn" class="btn primary" disabled>Convert to ZPL</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Preview</h2>
+        <canvas id="preview" width="0" height="0"></canvas>
+        <p class="hint" id="previewInfo">No image loaded.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>ZPL output</h2>
+      <div class="row toolbar">
+        <button type="button" id="copyBtn" class="btn" disabled>Copy</button>
+        <button type="button" id="downloadBtn" class="btn" disabled>Download .zpl</button>
+        <span id="zplStats" class="hint"></span>
+      </div>
+      <textarea id="zplOutput" rows="14" readonly placeholder="ZPL output will appear here&hellip;"></textarea>
+    </div>
+  </section>
+
+  <!-- ===== EDITOR TAB ===== -->
+  <section id="tab-editor" class="tab-panel">
+    <div class="grid">
+      <div class="panel">
+        <h2>Tools</h2>
+        <div class="row">
+          <label for="canvasW">Canvas size</label>
+          <input type="number" id="canvasW" min="16" max="2000" value="400"> &times;
+          <input type="number" id="canvasH" min="16" max="2000" value="200">
+          <button type="button" id="resizeCanvasBtn" class="btn">Apply</button>
+        </div>
+        <div class="row">
+          <label>Tool</label>
+          <select id="tool">
+            <option value="pen">Pen</option>
+            <option value="line">Line</option>
+            <option value="rect">Rectangle</option>
+            <option value="rectFill">Filled rectangle</option>
+            <option value="ellipse">Ellipse</option>
+            <option value="text">Text</option>
+            <option value="erase">Eraser</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="brushSize">Stroke / size</label>
+          <input type="range" id="brushSize" min="1" max="40" value="3">
+          <span id="brushSizeValue">3</span>
+        </div>
+        <div class="row">
+          <label for="textInput">Text</label>
+          <input type="text" id="textInput" value="Hello ZPL" maxlength="64">
+        </div>
+        <div class="row">
+          <label for="fontSize">Font size</label>
+          <input type="number" id="fontSize" min="6" max="200" value="24">
+        </div>
+        <div class="row">
+          <button type="button" id="clearBtn" class="btn">Clear</button>
+          <button type="button" id="undoBtn" class="btn">Undo</button>
+          <label class="btn">
+            <input type="file" id="importInput" accept="image/png,image/jpeg,image/gif">
+            Import image&hellip;
+          </label>
+        </div>
+
+        <h2>Export</h2>
+        <div class="row">
+          <label for="editorGraphicType">Graphic type</label>
+          <select id="editorGraphicType">
+            <option value="CompressedASCII" selected>CompressedASCII</option>
+            <option value="ASCII">ASCII</option>
+            <option value="Binary">Binary</option>
+          </select>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="editorThreshold" checked> Force monochrome on export</label>
+        </div>
+        <div class="row">
+          <button type="button" id="exportZplBtn" class="btn primary" disabled>Export to ZPL</button>
+          <button type="button" id="exportPngBtn" class="btn">Export PNG</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Canvas</h2>
+        <div class="canvas-wrap">
+          <canvas id="editor" width="400" height="200"></canvas>
+        </div>
+        <p class="hint">Click and drag to draw. The canvas content is converted pixel-by-pixel to a ZPL graphic field.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>ZPL output</h2>
+      <div class="row toolbar">
+        <button type="button" id="editorCopyBtn" class="btn" disabled>Copy</button>
+        <button type="button" id="editorDownloadBtn" class="btn" disabled>Download .zpl</button>
+        <span id="editorZplStats" class="hint"></span>
+      </div>
+      <textarea id="editorZplOutput" rows="12" readonly placeholder="ZPL output will appear here&hellip;"></textarea>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>
+    Built with <a href="https://github.com/SimonWaldherr/zplgfa" target="_blank" rel="noopener">zplgfa</a> &middot;
+    Source for this page is in <code>docs/</code> and <code>cmd/wasm/</code>.
+  </p>
+</footer>
+
+<script src="wasm_exec.js"></script>
+<script src="app.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>
