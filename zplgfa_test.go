@@ -10,7 +10,6 @@ import (
 	"image/color"
 	"image/png"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -27,7 +26,7 @@ type zplTest struct {
 var zplTests []zplTest
 
 func init() {
-	jsonstr, err := ioutil.ReadFile("./tests/tests.json")
+	jsonstr, err := os.ReadFile("./tests/tests.json")
 	if err != nil {
 		log.Fatalf("Failed to read test cases: %s", err)
 	}
