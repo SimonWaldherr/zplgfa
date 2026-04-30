@@ -5,7 +5,6 @@ import (
 	"compress/zlib"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -208,7 +207,7 @@ func EncodeZ64(input []byte) (string, error) {
 	writer := zlib.NewWriter(&compressed)
 	if _, err := writer.Write(input); err != nil {
 		if closeErr := writer.Close(); closeErr != nil {
-			return "", errors.Join(err, closeErr)
+			return "", fmt.Errorf("zlib write failed: %w (close also failed: %v)", err, closeErr)
 		}
 		return "", err
 	}
@@ -236,7 +235,8 @@ func crc16CCITT(data []byte) uint16 {
 }
 
 // ConvertToGraphicField converts an image.Image to a ZPL compatible Graphic Field.
-// It returns an empty string if Z64 encoding fails; use ConvertToGraphicFieldWithError to inspect the error.
+// For compatibility with the original string-only API, Z64 encoding errors are represented as an empty string.
+// Use ConvertToGraphicFieldWithError when callers need to distinguish encoding errors from empty output.
 func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 	graphicField, err := ConvertToGraphicFieldWithError(source, graphicType)
 	if err != nil {
