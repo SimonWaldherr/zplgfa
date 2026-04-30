@@ -238,7 +238,10 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 	width := (size.X + 7) / 8 // round up division
 	height := size.Y
 	var lastLine string
-	rawGraphicData := make([]byte, 0, width*height)
+	var rawGraphicData []byte
+	if graphicType == Z64 {
+		rawGraphicData = make([]byte, 0, width*height)
+	}
 
 	for y := 0; y < height; y++ {
 		line := make([]uint8, width)
@@ -251,7 +254,11 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 			}
 		}
 
-		rawGraphicData = append(rawGraphicData, line...)
+		if graphicType == Z64 {
+			rawGraphicData = append(rawGraphicData, line...)
+			continue
+		}
+
 		hexStr := strings.ToUpper(hex.EncodeToString(line))
 		switch graphicType {
 		case ASCII:
