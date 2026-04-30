@@ -2,11 +2,14 @@ package zplgfa
 
 import (
 	"bytes"
+	"compress/zlib"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -74,6 +77,45 @@ func Test_ConvertToZPLSmallImage(t *testing.T) {
 
 	if got != want {
 		t.Fatalf("ConvertToZPL for small image failed:\nExpected:\n%s\nGot:\n%s", want, got)
+	}
+}
+
+func Test_ConvertToGraphicFieldZ64(t *testing.T) {
+	img := image.NewGray(image.Rect(0, 0, 8, 1))
+
+	got := ConvertToGraphicField(img, Z64)
+	const prefix = "^GFA,1,1,1,\n:Z64:"
+	if !strings.HasPrefix(got, prefix) {
+		t.Fatalf("ConvertToGraphicField Z64 prefix failed:\nExpected prefix:\n%s\nGot:\n%s", prefix, got)
+	}
+
+	parts := strings.Split(strings.TrimPrefix(got, prefix), ":")
+	if len(parts) != 2 {
+		t.Fatalf("ConvertToGraphicField Z64 payload failed: got %q", got)
+	}
+
+	compressed, err := base64.StdEncoding.DecodeString(parts[0])
+	if err != nil {
+		t.Fatalf("ConvertToGraphicField Z64 base64 failed: %s", err)
+	}
+
+	if wantCRC := fmt.Sprintf("%04X", crc16CCITT(compressed)); parts[1] != wantCRC {
+		t.Fatalf("ConvertToGraphicField Z64 CRC failed: got %s, want %s", parts[1], wantCRC)
+	}
+
+	reader, err := zlib.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		t.Fatalf("ConvertToGraphicField Z64 zlib reader failed: %s", err)
+	}
+	defer reader.Close()
+
+	raw, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("ConvertToGraphicField Z64 decompress failed: %s", err)
+	}
+
+	if !bytes.Equal(raw, []byte{0xff}) {
+		t.Fatalf("ConvertToGraphicField Z64 raw data failed: got % X, want FF", raw)
 	}
 }
 
@@ -187,6 +229,8 @@ func parseGraphicType(graphicTypeStr string) GraphicType {
 		return Binary
 	case "CompressedASCII":
 		return CompressedASCII
+	case "Z64":
+		return Z64
 	default:
 		return CompressedASCII
 	}

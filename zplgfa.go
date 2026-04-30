@@ -1,6 +1,9 @@
 package zplgfa
 
 import (
+	"bytes"
+	"compress/zlib"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"image"
@@ -24,6 +27,8 @@ const (
 	Binary
 	// CompressedASCII compresses the hex data via RLE
 	CompressedASCII
+	// Z64 compresses the binary data with zlib and encodes it as base64 with a CRC
+	Z64
 )
 
 // ConvertOptions configures ZPL output created by ConvertToZPLWithOptions.
@@ -196,6 +201,37 @@ func CompressASCII(input string) string {
 	return output.String()
 }
 
+// EncodeZ64 compresses binary graphic data and formats it as a Z64 payload.
+func EncodeZ64(input []byte) (string, error) {
+	var compressed bytes.Buffer
+	writer := zlib.NewWriter(&compressed)
+	if _, err := writer.Write(input); err != nil {
+		writer.Close()
+		return "", err
+	}
+	if err := writer.Close(); err != nil {
+		return "", err
+	}
+
+	compressedBytes := compressed.Bytes()
+	return fmt.Sprintf(":Z64:%s:%04X", base64.StdEncoding.EncodeToString(compressedBytes), crc16CCITT(compressedBytes)), nil
+}
+
+func crc16CCITT(data []byte) uint16 {
+	var crc uint16 = 0xffff
+	for _, b := range data {
+		crc ^= uint16(b) << 8
+		for i := 0; i < 8; i++ {
+			if crc&0x8000 != 0 {
+				crc = (crc << 1) ^ 0x1021
+			} else {
+				crc <<= 1
+			}
+		}
+	}
+	return crc
+}
+
 // ConvertToGraphicField converts an image.Image to a ZPL compatible Graphic Field.
 func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 	var gfType, graphicFieldData string
@@ -203,6 +239,7 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 	width := (size.X + 7) / 8 // round up division
 	height := size.Y
 	var lastLine string
+	rawGraphicData := make([]byte, 0, width*height)
 
 	for y := 0; y < height; y++ {
 		line := make([]uint8, width)
@@ -215,6 +252,7 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 			}
 		}
 
+		rawGraphicData = append(rawGraphicData, line...)
 		hexStr := strings.ToUpper(hex.EncodeToString(line))
 		switch graphicType {
 		case ASCII:
@@ -232,12 +270,21 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 		}
 	}
 
+	totalBytes := len(graphicFieldData)
 	switch graphicType {
 	case ASCII, CompressedASCII:
 		gfType = "A"
 	case Binary:
 		gfType = "B"
+	case Z64:
+		gfType = "A"
+		totalBytes = len(rawGraphicData)
+		encoded, err := EncodeZ64(rawGraphicData)
+		if err != nil {
+			return ""
+		}
+		graphicFieldData = encoded
 	}
 
-	return fmt.Sprintf("^GF%s,%d,%d,%d,\n%s", gfType, len(graphicFieldData), width*height, width, graphicFieldData)
+	return fmt.Sprintf("^GF%s,%d,%d,%d,\n%s", gfType, totalBytes, width*height, width, graphicFieldData)
 }
