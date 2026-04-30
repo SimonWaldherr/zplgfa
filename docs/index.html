@@ -81,6 +81,28 @@
       </div>
       <textarea id="zplOutput" rows="14" readonly placeholder="ZPL output will appear here&hellip;"></textarea>
     </div>
+
+    <div class="panel">
+      <h2>ZPL Preview <span class="preview-via">via Labelary</span></h2>
+      <div class="row">
+        <label for="convPreviewDpmm">Printer DPI</label>
+        <select id="convPreviewDpmm">
+          <option value="8">203 dpi (8&nbsp;dpmm)</option>
+          <option value="12">300 dpi (12&nbsp;dpmm)</option>
+          <option value="6">152 dpi (6&nbsp;dpmm)</option>
+          <option value="24">600 dpi (24&nbsp;dpmm)</option>
+        </select>
+        <label for="convPreviewLabelW">Size&nbsp;(in)</label>
+        <input type="number" id="convPreviewLabelW" min="0.5" max="20" step="0.25" value="4" class="dim-input">
+        <span>&times;</span>
+        <input type="number" id="convPreviewLabelH" min="0.5" max="20" step="0.25" value="6" class="dim-input">
+        <label><input type="checkbox" id="convAutoPreview"> Auto</label>
+        <button type="button" id="convPreviewBtn" class="btn" disabled>Preview label</button>
+      </div>
+      <div id="convPreviewResult" class="preview-result">
+        <p class="hint">Convert an image, then click &ldquo;Preview label&rdquo;.</p>
+      </div>
+    </div>
   </section>
 
   <!-- ===== EDITOR TAB ===== -->
@@ -144,6 +166,9 @@
           <button type="button" id="exportZplBtn" class="btn primary" disabled>Export to ZPL</button>
           <button type="button" id="exportPngBtn" class="btn">Export PNG</button>
         </div>
+        <div class="row">
+          <label><input type="checkbox" id="autoExport" checked> Auto-export on draw</label>
+        </div>
       </div>
 
       <div class="panel">
@@ -162,7 +187,29 @@
         <button type="button" id="editorDownloadBtn" class="btn" disabled>Download .zpl</button>
         <span id="editorZplStats" class="hint"></span>
       </div>
-      <textarea id="editorZplOutput" rows="12" readonly placeholder="ZPL output will appear here&hellip;"></textarea>
+      <textarea id="editorZplOutput" rows="12" placeholder="ZPL output will appear here&hellip;"></textarea>
+    </div>
+
+    <div class="panel">
+      <h2>ZPL Preview <span class="preview-via">via Labelary</span></h2>
+      <div class="row">
+        <label for="previewDpmm">Printer DPI</label>
+        <select id="previewDpmm">
+          <option value="8">203 dpi (8&nbsp;dpmm)</option>
+          <option value="12">300 dpi (12&nbsp;dpmm)</option>
+          <option value="6">152 dpi (6&nbsp;dpmm)</option>
+          <option value="24">600 dpi (24&nbsp;dpmm)</option>
+        </select>
+        <label for="previewLabelW">Size&nbsp;(in)</label>
+        <input type="number" id="previewLabelW" min="0.5" max="20" step="0.25" value="4" class="dim-input">
+        <span>&times;</span>
+        <input type="number" id="previewLabelH" min="0.5" max="20" step="0.25" value="6" class="dim-input">
+        <label><input type="checkbox" id="autoPreview"> Auto</label>
+        <button type="button" id="editorPreviewBtn" class="btn" disabled>Preview label</button>
+      </div>
+      <div id="editorPreviewResult" class="preview-result">
+        <p class="hint">Export ZPL, then click &ldquo;Preview label&rdquo;.</p>
+      </div>
     </div>
   </section>
 </main>

@@ -23,11 +23,19 @@
   const exportPngBtn = document.getElementById("exportPngBtn");
   const editorGraphicType = document.getElementById("editorGraphicType");
   const editorThreshold = document.getElementById("editorThreshold");
+  const autoExportCheckbox = document.getElementById("autoExport");
 
   const zplOut = document.getElementById("editorZplOutput");
   const zplStats = document.getElementById("editorZplStats");
   const copyBtn = document.getElementById("editorCopyBtn");
   const downloadBtn = document.getElementById("editorDownloadBtn");
+
+  const previewDpmm = document.getElementById("previewDpmm");
+  const previewLabelW = document.getElementById("previewLabelW");
+  const previewLabelH = document.getElementById("previewLabelH");
+  const autoPreviewCheckbox = document.getElementById("autoPreview");
+  const editorPreviewBtn = document.getElementById("editorPreviewBtn");
+  const editorPreviewResult = document.getElementById("editorPreviewResult");
 
   // Stack of ImageData snapshots for undo.
   const undoStack = [];
@@ -61,6 +69,7 @@
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(old, 0, 0);
     undoStack.length = 0;
+    syncDimsFromCanvas();
   }
 
   // Initialize white background.
@@ -116,6 +125,7 @@
       ctx.fillStyle = "#000000";
       ctx.fillText(textInput.value || "", x, y);
       drawing = false;
+      scheduleAutoExport();
     } else {
       // Shape tools draw on move using a saved snapshot.
       preDragSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -166,8 +176,11 @@
   }
 
   function onPointerUp() {
-    drawing = false;
-    preDragSnapshot = null;
+    if (drawing) {
+      drawing = false;
+      preDragSnapshot = null;
+      scheduleAutoExport();
+    }
   }
 
   canvas.addEventListener("pointerdown", onPointerDown);
@@ -181,10 +194,14 @@
   resizeCanvasBtn.addEventListener("click", () =>
     resizeCanvas(parseInt(canvasW.value, 10), parseInt(canvasH.value, 10))
   );
-  clearBtn.addEventListener("click", clearCanvas);
+  clearBtn.addEventListener("click", () => {
+    clearCanvas();
+    scheduleAutoExport();
+  });
   undoBtn.addEventListener("click", () => {
     const snap = undoStack.pop();
     if (snap) ctx.putImageData(snap, 0, 0);
+    scheduleAutoExport();
   });
 
   importInput.addEventListener("change", (e) => {
@@ -202,6 +219,7 @@
       const dy = Math.round((canvas.height - h) / 2);
       ctx.drawImage(img, dx, dy, w, h);
       URL.revokeObjectURL(url);
+      scheduleAutoExport();
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -225,25 +243,53 @@
     }
   }
 
-  exportZplBtn.addEventListener("click", () => {
-    if (!window.zplgfaConvertRGBA) {
-      alert("WASM module not ready yet.");
-      return;
-    }
+  function doExportZpl() {
+    if (!window.zplgfaConvertRGBA) return false;
     const w = canvas.width;
     const h = canvas.height;
     const data = ctx.getImageData(0, 0, w, h);
     if (editorThreshold.checked) applyThresholdInPlace(data);
-    const buf = new Uint8Array(data.data.buffer.slice(0)); // copy to plain Uint8Array
+    const buf = new Uint8Array(data.data.buffer.slice(0));
     const result = window.zplgfaConvertRGBA(buf, w, h, editorGraphicType.value);
     if (result && result.error) {
       alert("Export failed: " + result.error);
-      return;
+      return false;
     }
     zplOut.value = result.zpl;
     zplStats.textContent = result.zpl.length.toLocaleString() + " characters · " + w + "×" + h;
     copyBtn.disabled = false;
     downloadBtn.disabled = false;
+    editorPreviewBtn.disabled = false;
+    return true;
+  }
+
+  // Debounced auto-export triggered after drawing operations.
+  let autoExportTimer = null;
+  function scheduleAutoExport() {
+    if (!autoExportCheckbox.checked) return;
+    if (!window.zplgfaConvertRGBA) return;
+    clearTimeout(autoExportTimer);
+    autoExportTimer = setTimeout(() => {
+      if (doExportZpl() && autoPreviewCheckbox.checked) {
+        triggerPreview();
+      }
+    }, 600);
+  }
+
+  exportZplBtn.addEventListener("click", () => {
+    if (!window.zplgfaConvertRGBA) {
+      alert("WASM module not ready yet.");
+      return;
+    }
+    if (doExportZpl() && autoPreviewCheckbox.checked) {
+      triggerPreview();
+    }
+  });
+
+  // Enable button and run initial export once WASM is loaded.
+  document.addEventListener("zplgfa:loaded", () => {
+    exportZplBtn.disabled = false;
+    if (autoExportCheckbox.checked) doExportZpl();
   });
 
   exportPngBtn.addEventListener("click", () => {
@@ -282,4 +328,32 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   });
+
+  // ---- ZPL Preview (Editor tab) ----------------------------------------
+  // Auto-compute label dimensions (inches) from canvas size and selected DPI.
+  function syncDimsFromCanvas() {
+    const dpmm = parseInt(previewDpmm.value, 10) || 8;
+    const dotsPerInch = dpmm * 25.4;
+    previewLabelW.value = Math.max(0.5, Math.round((canvas.width / dotsPerInch) * 4) / 4).toFixed(2);
+    previewLabelH.value = Math.max(0.5, Math.round((canvas.height / dotsPerInch) * 4) / 4).toFixed(2);
+  }
+
+  // Recompute on DPI change.
+  previewDpmm.addEventListener("change", syncDimsFromCanvas);
+  // Initial sync.
+  syncDimsFromCanvas();
+
+  function triggerPreview() {
+    const app = window.__zplgfaApp;
+    if (!app || !app.renderZplPreview) return;
+    app.renderZplPreview(
+      zplOut.value,
+      previewDpmm.value,
+      previewLabelW.value,
+      previewLabelH.value,
+      editorPreviewResult
+    );
+  }
+
+  editorPreviewBtn.addEventListener("click", triggerPreview);
 })();

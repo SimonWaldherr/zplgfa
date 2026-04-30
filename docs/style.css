@@ -195,3 +195,32 @@ code {
   border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+
+/* ---- ZPL Preview panel ---- */
+.preview-via {
+  font-size: 0.72rem;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.dim-input { width: 4.5em; }
+
+.preview-result {
+  margin-top: 0.75rem;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+}
+.zpl-preview-img {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #ffffff;
+  image-rendering: pixelated;
+}
+.preview-spinner { font-style: italic; }
+.preview-error { color: var(--danger) !important; }

@@ -200,6 +200,17 @@
       copyBtn.disabled = false;
       downloadBtn.disabled = false;
       setStatus("ready", "Conversion successful.");
+      // Enable and optionally trigger preview.
+      const convPreviewBtn = document.getElementById("convPreviewBtn");
+      if (convPreviewBtn) convPreviewBtn.disabled = false;
+      if (document.getElementById("convAutoPreview") && document.getElementById("convAutoPreview").checked) {
+        const el = document.getElementById("convPreviewResult");
+        if (el) renderZplPreview(zpl,
+          document.getElementById("convPreviewDpmm").value,
+          document.getElementById("convPreviewLabelW").value,
+          document.getElementById("convPreviewLabelH").value,
+          el);
+      }
     } catch (err) {
       setStatus("error", "Conversion failed: " + err.message);
     }
@@ -255,9 +266,65 @@
     URL.revokeObjectURL(url);
   });
 
+  // ---- ZPL Preview (shared helper) -------------------------------------
+  // Sends ZPL to the Labelary rendering API and displays the resulting image.
+  async function renderZplPreview(zplText, dpmm, widthIn, heightIn, resultEl) {
+    if (!zplText || !zplText.trim()) {
+      resultEl.innerHTML = '<p class="hint">No ZPL to preview.</p>';
+      return;
+    }
+    resultEl.innerHTML = '<p class="hint preview-spinner">Rendering&hellip;</p>';
+    const url =
+      "https://api.labelary.com/v1/printers/" +
+      encodeURIComponent(dpmm) + "dpmm/labels/" +
+      encodeURIComponent(widthIn) + "x" +
+      encodeURIComponent(heightIn) + "/0/";
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Accept": "image/png" },
+        body: zplText,
+      });
+      if (!resp.ok) throw new Error("Labelary HTTP " + resp.status);
+      const blob = await resp.blob();
+      const imgUrl = URL.createObjectURL(blob);
+      resultEl.innerHTML = "";
+      const img = document.createElement("img");
+      img.src = imgUrl;
+      img.alt = "ZPL label preview";
+      img.className = "zpl-preview-img";
+      img.onload = () => URL.revokeObjectURL(imgUrl);
+      resultEl.appendChild(img);
+    } catch (err) {
+      resultEl.innerHTML =
+        '<p class="hint preview-error">Preview failed: ' +
+        err.message +
+        ". Check your network connection.</p>";
+    }
+  }
+
   // Expose a tiny API for editor.js to share the wasm-ready signal.
   window.__zplgfaApp = {
     isReady: () => wasmReady,
     setStatus,
+    renderZplPreview,
   };
+
+  // ---- ZPL Preview (Converter tab) -------------------------------------
+  const convPreviewDpmm = document.getElementById("convPreviewDpmm");
+  const convPreviewLabelW = document.getElementById("convPreviewLabelW");
+  const convPreviewLabelH = document.getElementById("convPreviewLabelH");
+  const convAutoPreview = document.getElementById("convAutoPreview");
+  const convPreviewBtn = document.getElementById("convPreviewBtn");
+  const convPreviewResult = document.getElementById("convPreviewResult");
+
+  convPreviewBtn.addEventListener("click", () =>
+    renderZplPreview(
+      zplOutput.value,
+      convPreviewDpmm.value,
+      convPreviewLabelW.value,
+      convPreviewLabelH.value,
+      convPreviewResult
+    )
+  );
 })();
