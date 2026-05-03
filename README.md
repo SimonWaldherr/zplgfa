@@ -1,17 +1,11 @@
-*since I am currently working exclusively in the home office and no longer have to do with labels professionally (only as a hobby), I can unfortunately no longer work on this project.*
-*But if someone would like to provide me a [@Zebra](https://github.com/Zebra) printer, I would be happy to develop it further.*
-*Of course, pull requests are still welcome.*
-
 # ZPLGFA Golang Package
 
-*convert pictures to ZPL compatible ^GF-elements*
+*convert pictures to ZPL compatible ^GF-elements* with Golang and because of WASM even in the Browser: https://simonwaldherr.github.io/zplgfa/  
 
 [![DOI](https://zenodo.org/badge/153820885.svg)](https://doi.org/10.5281/zenodo.15291211) 
 [![GoDoc](https://godoc.org/github.com/SimonWaldherr/zplgfa?status.svg)](https://godoc.org/github.com/SimonWaldherr/zplgfa) 
 [![Coverage Status](https://coveralls.io/repos/github/SimonWaldherr/zplgfa/badge.svg?branch=master)](https://coveralls.io/github/SimonWaldherr/zplgfa?branch=master) 
 [![Go Report Card](https://goreportcard.com/badge/github.com/SimonWaldherr/zplgfa)](https://goreportcard.com/report/github.com/SimonWaldherr/zplgfa) 
-[![codebeat badge](https://codebeat.co/badges/28d795af-6f9b-453a-94c2-4fafb8b5b0d5)](https://codebeat.co/projects/github-com-simonwaldherr-zplgfa-master) 
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FSimonWaldherr%2Fzplgfa.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FSimonWaldherr%2Fzplgfa?ref=badge_shield) 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/SimonWaldherr/zplgfa/master/LICENSE) 
 
 The ZPLGFA **Golang** package implements some functions to convert PNG, JPEG and GIF encoded graphic files to ZPL compatible ^GF-elements ([Graphic Fields](https://www.zebra.com/us/en/support-downloads/knowledge-articles/gf-graphic-field-zpl-command.html)).
