@@ -483,14 +483,16 @@ func expandCompressedASCII(data string, rowHexLen, expectedRows int) ([]string, 
 		}
 		current.WriteString(strings.Repeat(strings.ToUpper(string(r)), count))
 		repeat = 0
-		for current.Len() >= rowHexLen {
-			row := current.String()[:rowHexLen]
-			remaining := current.String()[rowHexLen:]
+		currentData := current.String()
+		current.Reset()
+		for len(currentData) >= rowHexLen {
+			row := currentData[:rowHexLen]
+			currentData = currentData[rowHexLen:]
 			if err := appendRow(row); err != nil {
 				return nil, err
 			}
-			current.WriteString(remaining)
 		}
+		current.WriteString(currentData)
 	}
 
 	if current.Len() != 0 {
