@@ -73,8 +73,11 @@ func convertImage(this js.Value, args []js.Value) interface{} {
 	gt := zplgfa.CompressedASCII
 	lines := false
 	if len(args) >= 2 && args[1].Type() == js.TypeString {
-		lines = isLineOutput(args[1].String())
-		gt = graphicTypeFromString(args[1].String())
+		outputType := args[1].String()
+		lines = isLineOutput(outputType)
+		if !lines {
+			gt = graphicTypeFromString(outputType)
+		}
 	}
 
 	var zpl string
@@ -139,14 +142,19 @@ func convertRGBA(this js.Value, args []js.Value) interface{} {
 	gt := zplgfa.CompressedASCII
 	lines := false
 	if len(args) >= 4 && args[3].Type() == js.TypeString {
-		lines = isLineOutput(args[3].String())
-		gt = graphicTypeFromString(args[3].String())
+		outputType := args[3].String()
+		lines = isLineOutput(outputType)
+		if !lines {
+			gt = graphicTypeFromString(outputType)
+		}
 	}
 
 	flat := zplgfa.FlattenImage(img)
-	zpl := zplgfa.ConvertToZPL(flat, gt)
+	var zpl string
 	if lines {
 		zpl = zplgfa.ConvertToZPLLines(flat)
+	} else {
+		zpl = zplgfa.ConvertToZPL(flat, gt)
 	}
 
 	return map[string]interface{}{
