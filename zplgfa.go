@@ -419,7 +419,8 @@ func decodeZ64Data(data string, bytesUsed int) ([]byte, error) {
 }
 
 func expandCompressedASCII(data string, rowHexLen, expectedRows int) ([]string, error) {
-	// Index 0 is unused so indexes map directly to ZPL repeat counts.
+	// Index 0 is unused so each character maps directly to its repeat count:
+	// 'g'=1*20, 'h'=2*20, ... and 'G'=1, 'H'=2, ...
 	highRepeat := " ghijklmnopqrstuvwxyz"
 	lowRepeat := " GHIJKLMNOPQRSTUVWXY"
 	rows := make([]string, 0, expectedRows)
@@ -511,13 +512,18 @@ func isHexRune(r rune) bool {
 }
 
 func imageFromGraphicData(raw []byte, bytesPerRow int) *image.Gray {
+	const (
+		bitsPerByte = 8
+		maxBitIndex = bitsPerByte - 1
+	)
 	height := len(raw) / bytesPerRow
-	width := bytesPerRow * 8
+	width := bytesPerRow * bitsPerByte
 	img := image.NewGray(image.Rect(0, 0, width, height))
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			pixel := color.White
-			if raw[y*bytesPerRow+x/8]&(1<<(7-uint(x)%8)) != 0 {
+			bitIndex := uint(maxBitIndex - x%bitsPerByte)
+			if raw[y*bytesPerRow+x/bitsPerByte]&(1<<bitIndex) != 0 {
 				pixel = color.Black
 			}
 			img.Set(x, y, pixel)
