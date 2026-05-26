@@ -344,7 +344,12 @@ func parseGraphicField(graphicField string) (byte, int, int, string, error) {
 	} else if end := strings.Index(data, "^XZ"); end != -1 {
 		data = data[:end]
 	}
-	data = strings.TrimSpace(data)
+	if gfType == 'B' {
+		data = strings.TrimPrefix(data, "\r\n")
+		data = strings.TrimPrefix(data, "\n")
+	} else {
+		data = strings.TrimSpace(data)
+	}
 
 	return gfType, bytesUsed, bytesPerRow, data, nil
 }

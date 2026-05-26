@@ -111,7 +111,7 @@ func Test_ConvertGraphicFieldToImage(t *testing.T) {
 		img.Set(x, 1, color.Black)
 	}
 
-	for _, graphicType := range []GraphicType{ASCII, CompressedASCII, Z64} {
+	for _, graphicType := range []GraphicType{ASCII, Binary, CompressedASCII, Z64} {
 		t.Run(fmt.Sprint(graphicType), func(t *testing.T) {
 			zpl := ConvertToZPL(img, graphicType)
 			got, err := ConvertZPLToImage(zpl)

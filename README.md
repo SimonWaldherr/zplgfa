@@ -19,6 +19,8 @@ You can also try the package directly in your browser &mdash; the [WebAssembly b
 - convert `image.Image` values to complete ZPL labels with `ConvertToZPL`
 - generate raw `^GF` graphic fields with `ConvertToGraphicField`
 - choose between `ASCII`, `Binary`, `CompressedASCII` and `Z64` graphic field encodings
+- decode ZPL `^GF` graphic fields back to black and white images with `ConvertZPLToImage`
+- output black pixel runs as ZPL `^GB` line/box commands with `ConvertToZPLLines`
 - flatten images with alpha transparency against a white background with `FlattenImage`
 - compress ASCII graphic data with `CompressASCII`
 - position graphics on the label with `ConvertToZPLAt`
@@ -132,6 +134,18 @@ zplFromFile, err := zplgfa.ConvertFileToZPL("label.png", zplgfa.CompressedASCII)
 
 ```go
 gf := zplgfa.ConvertToGraphicField(flat, zplgfa.ASCII)
+```
+
+### Convert ZPL graphics back to an image
+
+```go
+img, err := zplgfa.ConvertZPLToImage(zpl)
+```
+
+### Output lines instead of a graphic field
+
+```go
+zpl := zplgfa.ConvertToZPLLines(flat)
 ```
 
 ## test and benchmark
