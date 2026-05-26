@@ -54,9 +54,7 @@ func makeError(format string, a ...interface{}) map[string]interface{} {
 
 // convertImage is the main entry point exported to JavaScript.
 //
-// JS signature: zplgfaConvert(bytes: Uint8Array, graphicType?: string)
-//
-//	=> {zpl, width, height} | {error}
+// JS signature: zplgfaConvert(bytes: Uint8Array, graphicType?: string), returning {zpl, width, height} or {error}.
 func convertImage(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return makeError("zplgfaConvert: expected at least one argument (Uint8Array)")
@@ -113,9 +111,7 @@ func convertImage(this js.Value, args []js.Value) interface{} {
 // plus width and height, allowing the in-browser editor to send canvas pixels
 // directly without re-encoding to PNG first.
 //
-// JS signature: zplgfaConvertRGBA(rgba: Uint8Array, width: number, height: number, graphicType?: string)
-//
-//	=> {zpl, width, height} | {error}
+// JS signature: zplgfaConvertRGBA(rgba: Uint8Array, width: number, height: number, graphicType?: string), returning {zpl, width, height} or {error}.
 func convertRGBA(this js.Value, args []js.Value) interface{} {
 	if len(args) < 3 {
 		return makeError("zplgfaConvertRGBA: expected (rgba, width, height[, graphicType])")

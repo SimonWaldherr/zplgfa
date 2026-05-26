@@ -91,11 +91,15 @@ func Test_ConvertToZPLLines(t *testing.T) {
 	}
 
 	got := ConvertToZPLLinesAt(img, 10, 20)
-	want := "^XA,^FS\n" +
-		"^FO11,20\n^GB3,1,1^FS\n" +
-		"^FO16,20\n^GB1,1,1^FS\n" +
-		"^FO10,22\n^GB8,1,1^FS\n" +
-		"^XZ\n"
+	want := `^XA,^FS
+^FO11,20
+^GB3,1,1^FS
+^FO16,20
+^GB1,1,1^FS
+^FO10,22
+^GB8,1,1^FS
+^XZ
+`
 	if got != want {
 		t.Fatalf("ConvertToZPLLinesAt failed:\nExpected:\n%s\nGot:\n%s", want, got)
 	}

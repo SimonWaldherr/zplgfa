@@ -271,7 +271,6 @@ func EncodeZ64(input []byte) (string, error) {
 		if closeErr := writer.Close(); closeErr != nil {
 			return "", fmt.Errorf("zlib write failed: %w (close also failed: %v)", err, closeErr)
 		}
-
 		return "", err
 	}
 	if err := writer.Close(); err != nil {
@@ -420,6 +419,7 @@ func decodeZ64Data(data string, bytesUsed int) ([]byte, error) {
 }
 
 func expandCompressedASCII(data string, rowHexLen, expectedRows int) ([]string, error) {
+	// Index 0 is unused so indexes map directly to ZPL repeat counts.
 	highRepeat := " ghijklmnopqrstuvwxyz"
 	lowRepeat := " GHIJKLMNOPQRSTUVWXY"
 	rows := make([]string, 0, expectedRows)
