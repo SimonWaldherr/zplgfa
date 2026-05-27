@@ -14,6 +14,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -61,6 +62,67 @@ func ConvertToZPLWithOptions(img image.Image, options ConvertOptions) string {
 	}
 
 	return fmt.Sprintf("^XA,^FS\n^FO%d,%d\n%s%s^FS,^XZ\n", options.X, options.Y, reverseField, ConvertToGraphicField(img, options.GraphicType))
+}
+
+// ConvertToZPLLines converts black pixel runs to ZPL line/box commands.
+func ConvertToZPLLines(img image.Image) string {
+	return ConvertToZPLLinesWithOptions(img, ConvertOptions{})
+}
+
+// ConvertToZPLLinesAt converts black pixel runs to ZPL line/box commands at the given origin.
+func ConvertToZPLLinesAt(img image.Image, x, y int) string {
+	return ConvertToZPLLinesWithOptions(img, ConvertOptions{X: x, Y: y})
+}
+
+// ConvertToZPLLinesWithOptions converts black pixel runs to ZPL line/box commands.
+func ConvertToZPLLinesWithOptions(img image.Image, options ConvertOptions) string {
+	if img == nil || img.Bounds().Dx() == 0 || img.Bounds().Dy() == 0 {
+		return ""
+	}
+
+	var zpl strings.Builder
+	zpl.WriteString("^XA,^FS\n")
+	zpl.WriteString(ConvertToLineFields(img, options))
+	zpl.WriteString("^XZ\n")
+	return zpl.String()
+}
+
+// ConvertToLineFields converts black pixel runs to ZPL ^GB line/box fields.
+func ConvertToLineFields(img image.Image, options ConvertOptions) string {
+	if img == nil || img.Bounds().Dx() == 0 || img.Bounds().Dy() == 0 {
+		return ""
+	}
+
+	bounds := img.Bounds()
+	var fields strings.Builder
+	reverseField := ""
+	if options.Reverse {
+		reverseField = "^FR\n"
+	}
+
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		runStart := -1
+		for x := bounds.Min.X; x <= bounds.Max.X; x++ {
+			black := false
+			if x < bounds.Max.X {
+				black = color.Gray16Model.Convert(img.At(x, y)).(color.Gray16).Y < math.MaxUint16/2
+			}
+			if black && runStart == -1 {
+				runStart = x
+			}
+			if (!black || x == bounds.Max.X) && runStart != -1 {
+				fields.WriteString(fmt.Sprintf("^FO%d,%d\n%s^GB%d,1,1^FS\n",
+					options.X+runStart-bounds.Min.X,
+					options.Y+y-bounds.Min.Y,
+					reverseField,
+					x-runStart,
+				))
+				runStart = -1
+			}
+		}
+	}
+
+	return fields.String()
 }
 
 // ConvertReaderToZPL decodes PNG, JPEG or GIF image data from reader and converts it to ZPL.
@@ -217,6 +279,259 @@ func EncodeZ64(input []byte) (string, error) {
 
 	compressedBytes := compressed.Bytes()
 	return fmt.Sprintf(":Z64:%s:%04X", base64.StdEncoding.EncodeToString(compressedBytes), crc16CCITT(compressedBytes)), nil
+}
+
+// ConvertZPLToImage extracts the first ^GF field from a ZPL string and converts it to an image.
+func ConvertZPLToImage(zpl string) (*image.Gray, error) {
+	start := strings.Index(zpl, "^GF")
+	if start == -1 {
+		return nil, fmt.Errorf("no ^GF field found")
+	}
+	return ConvertGraphicFieldToImage(zpl[start:])
+}
+
+// ConvertGraphicFieldToImage converts a ZPL ^GF graphic field to a black and white image.
+func ConvertGraphicFieldToImage(graphicField string) (*image.Gray, error) {
+	gfType, bytesUsed, bytesPerRow, data, err := parseGraphicField(graphicField)
+	if err != nil {
+		return nil, err
+	}
+	if bytesPerRow <= 0 || bytesUsed < 0 || bytesUsed%bytesPerRow != 0 {
+		return nil, fmt.Errorf("invalid ^GF dimensions")
+	}
+
+	var raw []byte
+	switch gfType {
+	case 'A', 'C':
+		raw, err = decodeASCIIData(data, bytesUsed, bytesPerRow)
+	case 'B':
+		raw, err = decodeBinaryData(data, bytesUsed)
+	default:
+		err = fmt.Errorf("unsupported ^GF type %q", string(gfType))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return imageFromGraphicData(raw, bytesPerRow), nil
+}
+
+func parseGraphicField(graphicField string) (byte, int, int, string, error) {
+	if len(graphicField) < 4 || graphicField[:3] != "^GF" {
+		return 0, 0, 0, "", fmt.Errorf("graphic field must start with ^GF")
+	}
+
+	gfType := graphicField[3]
+	rest := graphicField[4:]
+	parts := strings.SplitN(rest, ",", 5)
+	if len(parts) != 5 {
+		return 0, 0, 0, "", fmt.Errorf("invalid ^GF field")
+	}
+
+	bytesUsed, err := strconv.Atoi(strings.TrimSpace(parts[2]))
+	if err != nil {
+		return 0, 0, 0, "", fmt.Errorf("invalid ^GF byte count: %w", err)
+	}
+	bytesPerRow, err := strconv.Atoi(strings.TrimSpace(parts[3]))
+	if err != nil {
+		return 0, 0, 0, "", fmt.Errorf("invalid ^GF bytes per row: %w", err)
+	}
+
+	data := parts[4]
+	if end := strings.Index(data, "^FS"); end != -1 {
+		data = data[:end]
+	} else if end := strings.Index(data, "^XZ"); end != -1 {
+		data = data[:end]
+	}
+	if gfType == 'B' {
+		data = strings.TrimPrefix(data, "\r\n")
+		data = strings.TrimPrefix(data, "\n")
+	} else {
+		data = strings.TrimSpace(data)
+	}
+
+	return gfType, bytesUsed, bytesPerRow, data, nil
+}
+
+func decodeBinaryData(data string, bytesUsed int) ([]byte, error) {
+	raw := []byte(data)
+	if len(raw) < bytesUsed {
+		return nil, fmt.Errorf("binary ^GF data too short")
+	}
+	return raw[:bytesUsed], nil
+}
+
+func decodeASCIIData(data string, bytesUsed, bytesPerRow int) ([]byte, error) {
+	if strings.HasPrefix(data, ":Z64:") {
+		return decodeZ64Data(data, bytesUsed)
+	}
+
+	rowHexLen := bytesPerRow * 2
+	rows, err := expandCompressedASCII(data, rowHexLen, bytesUsed/bytesPerRow)
+	if err != nil {
+		return nil, err
+	}
+
+	raw := make([]byte, 0, bytesUsed)
+	for _, row := range rows {
+		bytes, err := hex.DecodeString(row)
+		if err != nil {
+			return nil, err
+		}
+		raw = append(raw, bytes...)
+	}
+	if len(raw) != bytesUsed {
+		return nil, fmt.Errorf("^GF data size mismatch: got %d bytes, want %d", len(raw), bytesUsed)
+	}
+	return raw, nil
+}
+
+func decodeZ64Data(data string, bytesUsed int) ([]byte, error) {
+	parts := strings.Split(data, ":")
+	if len(parts) < 4 || parts[1] != "Z64" {
+		return nil, fmt.Errorf("invalid Z64 payload")
+	}
+	compressed, err := base64.StdEncoding.DecodeString(parts[2])
+	if err != nil {
+		return nil, err
+	}
+	if len(parts[3]) >= 4 {
+		want := strings.ToUpper(parts[3][:4])
+		got := fmt.Sprintf("%04X", crc16CCITT(compressed))
+		if want != got {
+			return nil, fmt.Errorf("Z64 CRC mismatch: got %s, want %s", got, want)
+		}
+	}
+
+	reader, err := zlib.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+	raw, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) != bytesUsed {
+		return nil, fmt.Errorf("Z64 data size mismatch: got %d bytes, want %d", len(raw), bytesUsed)
+	}
+	return raw, nil
+}
+
+func expandCompressedASCII(data string, rowHexLen, expectedRows int) ([]string, error) {
+	// Index 0 is unused so each character maps directly to its repeat count:
+	// 'g'=1*20, 'h'=2*20, ... and 'G'=1, 'H'=2, ...
+	highRepeat := " ghijklmnopqrstuvwxyz"
+	lowRepeat := " GHIJKLMNOPQRSTUVWXY"
+	rows := make([]string, 0, expectedRows)
+	var current strings.Builder
+	lastRow := ""
+	repeat := 0
+
+	appendRow := func(row string) error {
+		if len(row) != rowHexLen {
+			return fmt.Errorf("^GF row length mismatch: got %d nibbles, want %d", len(row), rowHexLen)
+		}
+		rows = append(rows, row)
+		lastRow = row
+		current.Reset()
+		return nil
+	}
+
+	for _, r := range data {
+		if r == '\n' || r == '\r' || r == '\t' || r == ' ' {
+			continue
+		}
+		if r == ':' {
+			if current.Len() != 0 {
+				return nil, fmt.Errorf("repeat-line marker inside a row")
+			}
+			if lastRow == "" {
+				return nil, fmt.Errorf("repeat-line marker without previous row")
+			}
+			rows = append(rows, lastRow)
+			continue
+		}
+		if r == ',' || r == '!' {
+			if current.Len() != 0 {
+				return nil, fmt.Errorf("full-line marker inside a row")
+			}
+			fill := "0"
+			if r == '!' {
+				fill = "F"
+			}
+			if err := appendRow(strings.Repeat(fill, rowHexLen)); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		if idx := strings.IndexRune(highRepeat, r); idx > 0 {
+			repeat += idx * 20
+			continue
+		}
+		if idx := strings.IndexRune(lowRepeat, r); idx > 0 {
+			repeat += idx
+			continue
+		}
+		if !isHexRune(r) {
+			return nil, fmt.Errorf("invalid ^GF data character %q", r)
+		}
+
+		count := repeat
+		if count == 0 {
+			count = 1
+		}
+		current.WriteString(strings.Repeat(strings.ToUpper(string(r)), count))
+		repeat = 0
+		currentData := current.String()
+		current.Reset()
+		for len(currentData) >= rowHexLen {
+			row := currentData[:rowHexLen]
+			currentData = currentData[rowHexLen:]
+			if err := appendRow(row); err != nil {
+				return nil, err
+			}
+		}
+		current.WriteString(currentData)
+	}
+
+	if current.Len() != 0 {
+		if err := appendRow(current.String()); err != nil {
+			return nil, err
+		}
+	}
+	if repeat != 0 {
+		return nil, fmt.Errorf("dangling repeat count in ^GF data")
+	}
+	if len(rows) != expectedRows {
+		return nil, fmt.Errorf("^GF row count mismatch: got %d rows, want %d", len(rows), expectedRows)
+	}
+	return rows, nil
+}
+
+func isHexRune(r rune) bool {
+	return (r >= '0' && r <= '9') || (r >= 'A' && r <= 'F') || (r >= 'a' && r <= 'f')
+}
+
+func imageFromGraphicData(raw []byte, bytesPerRow int) *image.Gray {
+	const (
+		bitsPerByte = 8
+		maxBitIndex = bitsPerByte - 1
+	)
+	height := len(raw) / bytesPerRow
+	width := bytesPerRow * bitsPerByte
+	img := image.NewGray(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			pixel := color.White
+			bitIndex := uint(maxBitIndex - x%bitsPerByte)
+			if raw[y*bytesPerRow+x/bitsPerByte]&(1<<bitIndex) != 0 {
+				pixel = color.Black
+			}
+			img.Set(x, y, pixel)
+		}
+	}
+	return img
 }
 
 func crc16CCITT(data []byte) uint16 {

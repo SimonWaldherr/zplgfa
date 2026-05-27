@@ -33,6 +33,10 @@ func graphicTypeFromString(s string) zplgfa.GraphicType {
 	}
 }
 
+func isLineOutput(s string) bool {
+	return strings.ToUpper(strings.TrimSpace(s)) == "LINES"
+}
+
 // jsUint8ArrayToBytes copies a JavaScript Uint8Array into a Go []byte.
 func jsUint8ArrayToBytes(arr js.Value) []byte {
 	length := arr.Get("length").Int()
@@ -50,8 +54,7 @@ func makeError(format string, a ...interface{}) map[string]interface{} {
 
 // convertImage is the main entry point exported to JavaScript.
 //
-// JS signature: zplgfaConvert(bytes: Uint8Array, graphicType?: string)
-//   => {zpl, width, height} | {error}
+// JS signature: zplgfaConvert(bytes: Uint8Array, graphicType?: string), returning {zpl, width, height} or {error}.
 func convertImage(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return makeError("zplgfaConvert: expected at least one argument (Uint8Array)")
@@ -66,13 +69,28 @@ func convertImage(this js.Value, args []js.Value) interface{} {
 	}
 
 	gt := zplgfa.CompressedASCII
+	lines := false
 	if len(args) >= 2 && args[1].Type() == js.TypeString {
-		gt = graphicTypeFromString(args[1].String())
+		outputType := args[1].String()
+		lines = isLineOutput(outputType)
+		if !lines {
+			gt = graphicTypeFromString(outputType)
+		}
 	}
 
-	zpl, err := zplgfa.ConvertReaderToZPL(bytes.NewReader(data), gt)
-	if err != nil {
-		return makeError("zplgfaConvert: %s", err)
+	var zpl string
+	if lines {
+		img, _, err := image.Decode(bytes.NewReader(data))
+		if err != nil {
+			return makeError("zplgfaConvert: %s", err)
+		}
+		zpl = zplgfa.ConvertToZPLLines(zplgfa.FlattenImage(img))
+	} else {
+		var err error
+		zpl, err = zplgfa.ConvertReaderToZPL(bytes.NewReader(data), gt)
+		if err != nil {
+			return makeError("zplgfaConvert: %s", err)
+		}
 	}
 
 	// Decode the config again purely to expose width/height to the UI;
@@ -93,8 +111,7 @@ func convertImage(this js.Value, args []js.Value) interface{} {
 // plus width and height, allowing the in-browser editor to send canvas pixels
 // directly without re-encoding to PNG first.
 //
-// JS signature: zplgfaConvertRGBA(rgba: Uint8Array, width: number, height: number, graphicType?: string)
-//   => {zpl, width, height} | {error}
+// JS signature: zplgfaConvertRGBA(rgba: Uint8Array, width: number, height: number, graphicType?: string), returning {zpl, width, height} or {error}.
 func convertRGBA(this js.Value, args []js.Value) interface{} {
 	if len(args) < 3 {
 		return makeError("zplgfaConvertRGBA: expected (rgba, width, height[, graphicType])")
@@ -119,12 +136,22 @@ func convertRGBA(this js.Value, args []js.Value) interface{} {
 	}
 
 	gt := zplgfa.CompressedASCII
+	lines := false
 	if len(args) >= 4 && args[3].Type() == js.TypeString {
-		gt = graphicTypeFromString(args[3].String())
+		outputType := args[3].String()
+		lines = isLineOutput(outputType)
+		if !lines {
+			gt = graphicTypeFromString(outputType)
+		}
 	}
 
 	flat := zplgfa.FlattenImage(img)
-	zpl := zplgfa.ConvertToZPL(flat, gt)
+	var zpl string
+	if lines {
+		zpl = zplgfa.ConvertToZPLLines(flat)
+	} else {
+		zpl = zplgfa.ConvertToZPL(flat, gt)
+	}
 
 	return map[string]interface{}{
 		"zpl":    zpl,

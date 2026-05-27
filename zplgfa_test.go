@@ -79,6 +79,78 @@ func Test_ConvertToZPLSmallImage(t *testing.T) {
 	}
 }
 
+func Test_ConvertToZPLLines(t *testing.T) {
+	img := image.NewGray(image.Rect(0, 0, 8, 3))
+	fillGray(img, color.White)
+	for x := 1; x < 4; x++ {
+		img.Set(x, 0, color.Black)
+	}
+	img.Set(6, 0, color.Black)
+	for x := 0; x < 8; x++ {
+		img.Set(x, 2, color.Black)
+	}
+
+	got := ConvertToZPLLinesAt(img, 10, 20)
+	want := `^XA,^FS
+^FO11,20
+^GB3,1,1^FS
+^FO16,20
+^GB1,1,1^FS
+^FO10,22
+^GB8,1,1^FS
+^XZ
+`
+	if got != want {
+		t.Fatalf("ConvertToZPLLinesAt failed:\nExpected:\n%s\nGot:\n%s", want, got)
+	}
+}
+
+func Test_ConvertGraphicFieldToImage(t *testing.T) {
+	img := image.NewGray(image.Rect(0, 0, 8, 2))
+	fillGray(img, color.White)
+	for x := 0; x < 8; x += 2 {
+		img.Set(x, 0, color.Black)
+	}
+	for x := 1; x < 8; x += 2 {
+		img.Set(x, 1, color.Black)
+	}
+
+	for _, graphicType := range []GraphicType{ASCII, Binary, CompressedASCII, Z64} {
+		t.Run(fmt.Sprint(graphicType), func(t *testing.T) {
+			zpl := ConvertToZPL(img, graphicType)
+			got, err := ConvertZPLToImage(zpl)
+			if err != nil {
+				t.Fatalf("ConvertZPLToImage failed: %s", err)
+			}
+			assertGrayImageEqual(t, got, img)
+		})
+	}
+}
+
+func Test_ConvertGraphicFieldToImageCompressedRepeatLine(t *testing.T) {
+	got, err := ConvertGraphicFieldToImage("^GFA,5,2,1,\nAA:")
+	if err != nil {
+		t.Fatalf("ConvertGraphicFieldToImage failed: %s", err)
+	}
+	want := image.NewGray(image.Rect(0, 0, 8, 2))
+	fillGray(want, color.White)
+	for y := 0; y < 2; y++ {
+		for x := 0; x < 8; x += 2 {
+			want.Set(x, y, color.Black)
+		}
+	}
+	assertGrayImageEqual(t, got, want)
+}
+
+func Test_ConvertGraphicFieldToImageError(t *testing.T) {
+	if _, err := ConvertZPLToImage("^XA^FO0,0^FS^XZ"); err == nil {
+		t.Fatal("ConvertZPLToImage should fail without a ^GF field")
+	}
+	if _, err := ConvertGraphicFieldToImage("^GFA,1,2,1,\nFF"); err == nil {
+		t.Fatal("ConvertGraphicFieldToImage should fail for invalid dimensions")
+	}
+}
+
 func Test_ConvertToGraphicFieldZ64(t *testing.T) {
 	img := image.NewGray(image.Rect(0, 0, 8, 1))
 	assertZ64GraphicField(t, img, 1, []byte{0xff})
@@ -130,6 +202,28 @@ func assertZ64GraphicField(t *testing.T, img image.Image, expectedBytesPerRow in
 
 	if !bytes.Equal(raw, expectedUncompressedData) {
 		t.Fatalf("ConvertToGraphicField Z64 raw data failed: got % X, want % X", raw, expectedUncompressedData)
+	}
+}
+
+func fillGray(img *image.Gray, c color.Color) {
+	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
+		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
+			img.Set(x, y, c)
+		}
+	}
+}
+
+func assertGrayImageEqual(t *testing.T, got, want *image.Gray) {
+	t.Helper()
+	if !got.Bounds().Eq(want.Bounds()) {
+		t.Fatalf("image bounds failed: got %v, want %v", got.Bounds(), want.Bounds())
+	}
+	for y := want.Bounds().Min.Y; y < want.Bounds().Max.Y; y++ {
+		for x := want.Bounds().Min.X; x < want.Bounds().Max.X; x++ {
+			if got.GrayAt(x, y) != want.GrayAt(x, y) {
+				t.Fatalf("pixel %d,%d failed: got %v, want %v", x, y, got.GrayAt(x, y), want.GrayAt(x, y))
+			}
+		}
 	}
 }
 

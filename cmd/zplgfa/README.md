@@ -23,6 +23,18 @@ or via the integrated network capability:
 zplgfa -file label.png -ip 192.168.178.42
 ```
 
+You can output black pixel runs as ZPL line/box commands instead of a `^GF` graphic field:
+
+```sh
+zplgfa -file label.png -lines
+```
+
+Or convert a ZPL file containing a `^GF` field back to PNG:
+
+```sh
+zplgfa -file label.zpl -decode -out label.png
+```
+
 You can also use some effects, e.g. blur:
 
 ```sh
