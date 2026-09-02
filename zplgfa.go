@@ -241,6 +241,14 @@ func CompressASCII(input string) string {
 		}
 
 		if lastChar != curChar {
+			if curChar == "" && lastCharSince == 0 {
+				switch lastChar {
+				case "0":
+					return ","
+				case "F":
+					return "!"
+				}
+			}
 			if i-lastCharSince > 4 {
 				output.WriteString(getRepeatCode(i-lastCharSince, lastChar))
 			} else {
@@ -248,15 +256,6 @@ func CompressASCII(input string) string {
 			}
 			lastChar = curChar
 			lastCharSince = i
-		}
-
-		if curChar == "" && lastCharSince == 0 {
-			switch lastChar {
-			case "0":
-				return ","
-			case "F":
-				return "!"
-			}
 		}
 	}
 
@@ -278,7 +277,8 @@ func EncodeZ64(input []byte) (string, error) {
 	}
 
 	compressedBytes := compressed.Bytes()
-	return fmt.Sprintf(":Z64:%s:%04X", base64.StdEncoding.EncodeToString(compressedBytes), crc16CCITT(compressedBytes)), nil
+	encoded := base64.StdEncoding.EncodeToString(compressedBytes)
+	return fmt.Sprintf(":Z64:%s:%04X", encoded, crc16XMODEM([]byte(encoded))), nil
 }
 
 // ConvertZPLToImage extracts the first ^GF field from a ZPL string and converts it to an image.
@@ -397,7 +397,7 @@ func decodeZ64Data(data string, bytesUsed int) ([]byte, error) {
 	}
 	if len(parts[3]) >= 4 {
 		want := strings.ToUpper(parts[3][:4])
-		got := fmt.Sprintf("%04X", crc16CCITT(compressed))
+		got := fmt.Sprintf("%04X", crc16XMODEM([]byte(parts[2])))
 		if want != got {
 			return nil, fmt.Errorf("Z64 CRC mismatch: got %s, want %s", got, want)
 		}
@@ -453,14 +453,17 @@ func expandCompressedASCII(data string, rowHexLen, expectedRows int) ([]string, 
 			continue
 		}
 		if r == ',' || r == '!' {
-			if current.Len() != 0 {
-				return nil, fmt.Errorf("full-line marker inside a row")
-			}
 			fill := "0"
 			if r == '!' {
 				fill = "F"
 			}
-			if err := appendRow(strings.Repeat(fill, rowHexLen)); err != nil {
+			currentData := current.String()
+			current.Reset()
+			if len(currentData) >= rowHexLen {
+				return nil, fmt.Errorf("full-line marker inside a row")
+			}
+			row := currentData + strings.Repeat(fill, rowHexLen-len(currentData))
+			if err := appendRow(row); err != nil {
 				return nil, err
 			}
 			continue
@@ -534,8 +537,10 @@ func imageFromGraphicData(raw []byte, bytesPerRow int) *image.Gray {
 	return img
 }
 
-func crc16CCITT(data []byte) uint16 {
-	var crc uint16 = 0xffff
+// crc16XMODEM computes CRC-16/XMODEM (poly 0x1021, init 0x0000), the checksum
+// Zebra tools use for the :Z64: field, taken over the base64-encoded text.
+func crc16XMODEM(data []byte) uint16 {
+	var crc uint16 = 0x0000
 	for _, b := range data {
 		crc ^= uint16(b) << 8
 		for i := 0; i < 8; i++ {
@@ -562,7 +567,8 @@ func ConvertToGraphicField(source image.Image, graphicType GraphicType) string {
 
 // ConvertToGraphicFieldWithError converts an image.Image to a ZPL compatible Graphic Field and returns encoding errors.
 func ConvertToGraphicFieldWithError(source image.Image, graphicType GraphicType) (string, error) {
-	var gfType, graphicFieldData string
+	var gfType string
+	var graphicFieldData strings.Builder
 	size := source.Bounds().Size()
 	width := (size.X + 7) / 8 // round up division
 	height := size.Y
@@ -591,21 +597,23 @@ func ConvertToGraphicFieldWithError(source image.Image, graphicType GraphicType)
 		hexStr := strings.ToUpper(hex.EncodeToString(line))
 		switch graphicType {
 		case ASCII:
-			graphicFieldData += fmt.Sprintln(hexStr)
+			graphicFieldData.WriteString(hexStr)
+			graphicFieldData.WriteByte('\n')
 		case CompressedASCII:
 			curLine := CompressASCII(hexStr)
 			if lastLine == curLine {
-				graphicFieldData += ":"
+				graphicFieldData.WriteByte(':')
 			} else {
-				graphicFieldData += curLine
+				graphicFieldData.WriteString(curLine)
 			}
 			lastLine = curLine
 		case Binary:
-			graphicFieldData += string(line)
+			graphicFieldData.WriteString(string(line))
 		}
 	}
 
-	totalBytes := len(graphicFieldData)
+	totalBytes := graphicFieldData.Len()
+	finalData := graphicFieldData.String()
 	switch graphicType {
 	case ASCII, CompressedASCII:
 		gfType = "A"
@@ -618,8 +626,8 @@ func ConvertToGraphicFieldWithError(source image.Image, graphicType GraphicType)
 		if err != nil {
 			return "", err
 		}
-		graphicFieldData = encoded
+		finalData = encoded
 	}
 
-	return fmt.Sprintf("^GF%s,%d,%d,%d,\n%s", gfType, totalBytes, width*height, width, graphicFieldData), nil
+	return fmt.Sprintf("^GF%s,%d,%d,%d,\n%s", gfType, totalBytes, width*height, width, finalData), nil
 }

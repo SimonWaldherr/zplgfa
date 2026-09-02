@@ -41,6 +41,84 @@ func Test_CompressASCII(t *testing.T) {
 	}
 }
 
+// A row consisting only of 0 or F nibbles compresses to the single-character
+// fill markers described by the ZPL spec, rather than to a repeat code.
+func Test_CompressASCIIFullLineMarkers(t *testing.T) {
+	for _, testcase := range []struct {
+		input string
+		want  string
+	}{
+		{"00000000", ","},
+		{"FFFFFFFF", "!"},
+		{"0000", ","},
+		{"FF", "!"},
+		// Partially uniform rows keep using repeat codes.
+		{"0000000F", "M0F"},
+		{"F0000000", "FM0"},
+	} {
+		if got := CompressASCII(testcase.input); got != testcase.want {
+			t.Errorf("CompressASCII(%q) = %q, want %q", testcase.input, got, testcase.want)
+		}
+	}
+}
+
+// Per the ZPL spec, "," and "!" fill the remainder of the row to the right,
+// which is also valid when the row already carries hex data.
+func Test_ConvertGraphicFieldToImageMidRowFill(t *testing.T) {
+	// Row 1: "A" then fill with 0 -> A0. Row 2: "5" then fill with F -> 5F.
+	got, err := ConvertGraphicFieldToImage("^GFA,6,2,1,\nA,5!")
+	if err != nil {
+		t.Fatalf("ConvertGraphicFieldToImage failed: %s", err)
+	}
+
+	want := image.NewGray(image.Rect(0, 0, 8, 2))
+	fillGray(want, color.White)
+	for _, row := range []struct {
+		y    int
+		bits byte
+	}{{0, 0xa0}, {1, 0x5f}} {
+		for x := 0; x < 8; x++ {
+			if row.bits&(1<<(7-uint(x))) != 0 {
+				want.Set(x, row.y, color.Black)
+			}
+		}
+	}
+	assertGrayImageEqual(t, got, want)
+}
+
+// Zebra calculates the :Z64: checksum as CRC-16/XMODEM over the base64 text,
+// not over the compressed bytes it encodes.
+func Test_DecodeZ64CRCOverBase64Text(t *testing.T) {
+	img := image.NewGray(image.Rect(0, 0, 8, 2))
+	fillGray(img, color.White)
+	img.Set(0, 0, color.Black)
+
+	zpl := ConvertToZPL(img, Z64)
+	payload := zpl[strings.Index(zpl, ":Z64:"):]
+	payload = payload[:strings.Index(payload, "^FS")]
+	parts := strings.Split(strings.TrimSpace(payload), ":")
+	if len(parts) != 4 {
+		t.Fatalf("unexpected Z64 payload %q", payload)
+	}
+
+	if want := fmt.Sprintf("%04X", crc16XMODEM([]byte(parts[2]))); parts[3] != want {
+		t.Fatalf("Z64 CRC is not CRC-16/XMODEM over the base64 text: got %s, want %s", parts[3], want)
+	}
+
+	decoded, err := ConvertZPLToImage(zpl)
+	if err != nil {
+		t.Fatalf("ConvertZPLToImage failed: %s", err)
+	}
+	assertGrayImageEqual(t, decoded, img)
+
+	// A payload whose CRC was calculated over the compressed bytes instead of
+	// the base64 text must be rejected.
+	broken := strings.Replace(zpl, ":"+parts[3], ":0000", 1)
+	if _, err := ConvertZPLToImage(broken); err == nil {
+		t.Fatal("ConvertZPLToImage should reject a Z64 payload with a wrong CRC")
+	}
+}
+
 func Test_ConvertToZPLAt(t *testing.T) {
 	img := image.NewGray(image.Rect(0, 0, 8, 1))
 
@@ -185,7 +263,7 @@ func assertZ64GraphicField(t *testing.T, img image.Image, expectedBytesPerRow in
 		t.Fatalf("ConvertToGraphicField Z64 base64 failed: %s", err)
 	}
 
-	if wantCRC := fmt.Sprintf("%04X", crc16CCITT(compressed)); parts[1] != wantCRC {
+	if wantCRC := fmt.Sprintf("%04X", crc16XMODEM([]byte(parts[0]))); parts[1] != wantCRC {
 		t.Fatalf("ConvertToGraphicField Z64 CRC failed: got %s, want %s", parts[1], wantCRC)
 	}
 

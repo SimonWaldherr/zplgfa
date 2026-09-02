@@ -11,7 +11,7 @@ import (
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
-	_ "image/png"
+	"image/png"
 	"strings"
 	"syscall/js"
 
@@ -43,6 +43,13 @@ func jsUint8ArrayToBytes(arr js.Value) []byte {
 	buf := make([]byte, length)
 	js.CopyBytesToGo(buf, arr)
 	return buf
+}
+
+// bytesToJSUint8Array copies a Go []byte into a new JavaScript Uint8Array.
+func bytesToJSUint8Array(buf []byte) js.Value {
+	arr := js.Global().Get("Uint8Array").New(len(buf))
+	js.CopyBytesToJS(arr, buf)
+	return arr
 }
 
 // makeError produces a JS object {error: "..."} that callers can branch on.
@@ -160,9 +167,57 @@ func convertRGBA(this js.Value, args []js.Value) interface{} {
 	}
 }
 
+// decodeZPL converts a ZPL string back into an image, taking the first ^GF
+// graphic field it finds. Supported ^GF encodings are ASCII hex, compressed
+// ASCII, binary and :Z64:.
+//
+// JS signature: zplgfaDecode(zpl: string, output?: string), returning
+// {png, width, height} (default) or {rgba, width, height} for output "rgba",
+// or {error}.
+func decodeZPL(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 || args[0].Type() != js.TypeString {
+		return makeError("zplgfaDecode: expected a ZPL string argument")
+	}
+
+	img, err := zplgfa.ConvertZPLToImage(args[0].String())
+	if err != nil {
+		return makeError("zplgfaDecode: %s", err)
+	}
+
+	size := img.Bounds().Size()
+	result := map[string]interface{}{
+		"width":  size.X,
+		"height": size.Y,
+	}
+
+	if len(args) >= 2 && args[1].Type() == js.TypeString &&
+		strings.ToUpper(strings.TrimSpace(args[1].String())) == "RGBA" {
+		// Expand the grayscale image to RGBA so the result can be handed to
+		// CanvasRenderingContext2D.putImageData without further conversion.
+		rgba := make([]byte, 0, size.X*size.Y*4)
+		bounds := img.Bounds()
+		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+			for x := bounds.Min.X; x < bounds.Max.X; x++ {
+				gray := img.GrayAt(x, y).Y
+				rgba = append(rgba, gray, gray, gray, 0xff)
+			}
+		}
+		result["rgba"] = bytesToJSUint8Array(rgba)
+		return result
+	}
+
+	var encoded bytes.Buffer
+	if err := png.Encode(&encoded, img); err != nil {
+		return makeError("zplgfaDecode: %s", err)
+	}
+	result["png"] = bytesToJSUint8Array(encoded.Bytes())
+	return result
+}
+
 func main() {
 	js.Global().Set("zplgfaConvert", js.FuncOf(convertImage))
 	js.Global().Set("zplgfaConvertRGBA", js.FuncOf(convertRGBA))
+	js.Global().Set("zplgfaDecode", js.FuncOf(decodeZPL))
 
 	// Signal readiness to the host page. The page can either listen for the
 	// "zplgfaReady" event on document or poll for window.zplgfaReady === true.

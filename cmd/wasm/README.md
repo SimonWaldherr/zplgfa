@@ -27,7 +27,7 @@ cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" ./wasm_exec.js
 
 ## Using from JavaScript
 
-Once the module has been instantiated, two functions are registered on
+Once the module has been instantiated, three functions are registered on
 `window`:
 
 ### `zplgfaConvert(bytes, graphicType?)`
@@ -48,6 +48,24 @@ ZPL, skipping the encode/decode roundtrip.
 * `width`, `height` — dimensions in pixels.
 * `graphicType` *(optional)* — same options as above.
 * Returns `{ zpl, width, height }` or `{ error }`.
+
+### `zplgfaDecode(zpl, output?)`
+
+Converts ZPL back into an image, using the first `^GF` graphic field found.
+Supported `^GF` encodings are ASCII hex, compressed ASCII, binary and `:Z64:`.
+
+* `zpl` — ZPL string.
+* `output` *(optional)* — `"png"` (default) or `"rgba"`.
+* Returns `{ png, width, height }` with `png` as a `Uint8Array`, or
+  `{ rgba, width, height }` for `"rgba"` (4 bytes per pixel, ready for
+  `putImageData`), or `{ error }` on failure.
+
+```js
+const { png, width, height, error } = window.zplgfaDecode(zpl);
+if (error) throw new Error(error);
+const url = URL.createObjectURL(new Blob([png], { type: "image/png" }));
+document.querySelector("img").src = url;
+```
 
 ### Readiness
 
