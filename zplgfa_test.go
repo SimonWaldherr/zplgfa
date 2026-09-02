@@ -119,6 +119,83 @@ func Test_DecodeZ64CRCOverBase64Text(t *testing.T) {
 	}
 }
 
+// z64Fixture is a :Z64: graphic field checked in verbatim: 16x4 pixels, rows
+// AA55 / 55AA / FF00 / 00FF. Decoding it exercises the Z64 path against fixed
+// bytes rather than against this package's own encoder output, which is what
+// let a wrong CRC algorithm survive here for a release: encode and decode
+// shared one incorrect function, so every internal roundtrip passed while
+// virtually every :Z64: block from genuine Zebra software failed the check.
+//
+// Note that Labelary renders payloads whose CRC is invalid, so it cannot be
+// used to validate the checksum - see miikanissi/zebrafy#17, where a Zebra
+// ZD420 silently rejects a payload that Labelary displays without complaint.
+const z64Fixture = "^GFA,8,8,2,\n:Z64:eJxaFRq66j8Dw39AAAAA//8R9gP9:7926^FS"
+
+// crc16XMODEMReflected is the reflected CRC-16/CCITT variant (poly 0x8408,
+// init 0xFFFF, complemented and byte-swapped) that is sometimes mistaken for
+// the Zebra checksum. It exists only so the test below can assert that such a
+// payload is rejected; do not use it for encoding.
+func crc16XMODEMReflected(data []byte) uint16 {
+	var crc uint16 = 0xffff
+	for _, b := range data {
+		cur := uint16(b)
+		for i := 0; i < 8; i++ {
+			if (crc&1)^(cur&1) != 0 {
+				crc = (crc >> 1) ^ 0x8408
+			} else {
+				crc >>= 1
+			}
+			cur >>= 1
+		}
+	}
+	crc = ^crc
+	return (crc << 8) | ((crc >> 8) & 0xff)
+}
+
+// The published CRC catalogue entry for CRC-16/XMODEM is
+// width=16 poly=0x1021 init=0x0000 refin=false refout=false xorout=0x0000,
+// with check=0x31C3 for the ASCII input "123456789". Pinning that value keeps
+// the algorithm identity anchored to an external reference instead of to this
+// package's own output.
+func Test_CRC16XMODEMCheckValue(t *testing.T) {
+	if got := crc16XMODEM([]byte("123456789")); got != 0x31C3 {
+		t.Fatalf("crc16XMODEM check value = %04X, want 31C3 (CRC-16/XMODEM)", got)
+	}
+	// Guard against the reflected variant being reintroduced by a refactor.
+	if got := crc16XMODEMReflected([]byte("123456789")); got == 0x31C3 {
+		t.Fatal("reflected variant must not produce the XMODEM check value")
+	}
+}
+
+func Test_DecodeZ64StaticFixture(t *testing.T) {
+	got, err := ConvertGraphicFieldToImage(z64Fixture)
+	if err != nil {
+		t.Fatalf("ConvertGraphicFieldToImage failed for the static Z64 fixture: %s", err)
+	}
+
+	want := image.NewGray(image.Rect(0, 0, 16, 4))
+	fillGray(want, color.White)
+	for y, row := range [][]byte{{0xaa, 0x55}, {0x55, 0xaa}, {0xff, 0x00}, {0x00, 0xff}} {
+		for x := 0; x < 16; x++ {
+			if row[x/8]&(1<<(7-uint(x)%8)) != 0 {
+				want.Set(x, y, color.Black)
+			}
+		}
+	}
+	assertGrayImageEqual(t, got, want)
+
+	// The same payload carrying the reflected variant's checksum must fail,
+	// so a future change to the wrong algorithm cannot pass unnoticed.
+	base64Text := strings.Split(z64Fixture, ":")[2]
+	wrong := fmt.Sprintf("%04X", crc16XMODEMReflected([]byte(base64Text)))
+	if wrong == "7926" {
+		t.Fatal("fixture is not discriminating: both algorithms agree on it")
+	}
+	if _, err := ConvertGraphicFieldToImage(strings.Replace(z64Fixture, ":7926", ":"+wrong, 1)); err == nil {
+		t.Fatalf("a Z64 payload with the reflected CRC %s must be rejected", wrong)
+	}
+}
+
 func Test_ConvertToZPLAt(t *testing.T) {
 	img := image.NewGray(image.Rect(0, 0, 8, 1))
 
